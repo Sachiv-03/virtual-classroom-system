@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Crown, Medal, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
 interface LeaderboardEntry {
   rank: number;
@@ -91,7 +92,7 @@ export function Leaderboard() {
             <span className="text-xs font-bold">2nd</span>
           </div>
         </div>
-        
+
         {/* 1st Place */}
         <div className="flex flex-col items-center -mt-4">
           <div className="relative">
@@ -105,7 +106,7 @@ export function Leaderboard() {
             <span className="text-lg font-bold text-warning">1st</span>
           </div>
         </div>
-        
+
         {/* 3rd Place */}
         <div className="flex flex-col items-center">
           <Avatar className={cn(
@@ -135,7 +136,7 @@ export function Leaderboard() {
             <div className="w-6 flex justify-center">
               {getRankIcon(entry.rank)}
             </div>
-            
+
             <Avatar className={cn(
               "h-8 w-8",
               entry.isCurrentUser && "ring-2 ring-primary"
@@ -143,7 +144,7 @@ export function Leaderboard() {
               <AvatarImage src={entry.avatar} />
               <AvatarFallback>{entry.initials}</AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1 min-w-0">
               <p className={cn(
                 "font-medium text-sm truncate",
@@ -154,7 +155,7 @@ export function Leaderboard() {
               </p>
               <p className="text-xs text-muted-foreground">Level {entry.level}</p>
             </div>
-            
+
             <div className="text-right">
               <p className="font-semibold text-sm">{entry.xp.toLocaleString()}</p>
               <div className="flex justify-end">
@@ -167,7 +168,10 @@ export function Leaderboard() {
 
       {/* Footer */}
       <div className="p-3 border-t border-border bg-muted/30 text-center">
-        <button className="text-sm text-primary font-medium hover:underline">
+        <button
+          className="text-sm text-primary font-medium hover:underline"
+          onClick={() => toast.info("Global Leaderboard feature coming soon!")}
+        >
           View Full Leaderboard →
         </button>
       </div>

@@ -2,32 +2,63 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import Index from "./pages/Index";
 import Courses from "./pages/Courses";
 import Gamification from "./pages/Gamification";
 import LiveClassroom from "./pages/LiveClassroom";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+
+import Schedule from "./pages/Schedule";
+import Messages from "./pages/Messages";
+import Assignments from "./pages/Assignments";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
+const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
+  const { token, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  return token ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const AppContent = () => (
+  <BrowserRouter>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      <Route path="/" element={<PrivateRoute><Index /></PrivateRoute>} />
+      <Route path="/courses" element={<PrivateRoute><Courses /></PrivateRoute>} />
+      <Route path="/achievements" element={<PrivateRoute><Gamification /></PrivateRoute>} />
+      <Route path="/live" element={<PrivateRoute><LiveClassroom /></PrivateRoute>} />
+      <Route path="/schedule" element={<PrivateRoute><Schedule /></PrivateRoute>} />
+      <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
+      <Route path="/assignments" element={<PrivateRoute><Assignments /></PrivateRoute>} />
+      <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </BrowserRouter>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/courses" element={<Courses />} />
-          <Route path="/achievements" element={<Gamification />} />
-          <Route path="/live" element={<LiveClassroom />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AppContent />
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
 export default App;
+

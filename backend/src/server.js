@@ -12,7 +12,11 @@ dotenv.config();
 const connectDB = async () => {
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI);
+<<<<<<< HEAD
         console.log(`MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
+=======
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
     } catch (error) {
         console.error(`Error: ${error.message}`);
         process.exit(1);

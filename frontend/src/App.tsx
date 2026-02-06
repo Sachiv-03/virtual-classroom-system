@@ -4,7 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+<<<<<<< HEAD
 import { GoogleOAuthProvider } from '@react-oauth/google';
+=======
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
 import Index from "./pages/Index";
 import Courses from "./pages/Courses";
 import Gamification from "./pages/Gamification";
@@ -50,6 +53,7 @@ const AppContent = () => (
 );
 
 const App = () => (
+<<<<<<< HEAD
   <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -61,6 +65,17 @@ const App = () => (
       </AuthProvider>
     </QueryClientProvider>
   </GoogleOAuthProvider>
+=======
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AppContent />
+      </TooltipProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
 );
 
 export default App;

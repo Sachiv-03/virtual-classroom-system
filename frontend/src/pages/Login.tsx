@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap, Loader2 } from "lucide-react";
+<<<<<<< HEAD
 import { GoogleLogin } from '@react-oauth/google';
+=======
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -33,6 +36,7 @@ const Login = () => {
         }
     };
 
+<<<<<<< HEAD
     const handleGoogleSuccess = async (credentialResponse: any) => {
         setLoading(true);
         try {
@@ -55,6 +59,8 @@ const Login = () => {
         toast.error("Google login failed");
     };
 
+=======
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-mesh p-4">
             <div className="w-full max-w-md space-y-8 bg-card/80 backdrop-blur-xl p-8 rounded-2xl border border-border shadow-2xl animate-fade-in">
@@ -116,6 +122,7 @@ const Login = () => {
                     </Button>
                 </form>
 
+<<<<<<< HEAD
                 <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t border-border" />
@@ -137,6 +144,8 @@ const Login = () => {
                     />
                 </div>
 
+=======
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
                 <div className="text-center text-sm">
                     <span className="text-muted-foreground">Don't have an account? </span>
                     <Link

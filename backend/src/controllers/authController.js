@@ -2,9 +2,12 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+<<<<<<< HEAD
 const { OAuth2Client } = require('google-auth-library');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+=======
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
 
 // Generate Token
 const generateToken = (id) => {
@@ -32,8 +35,11 @@ exports.register = async (req, res) => {
             role,
         });
 
+<<<<<<< HEAD
         console.log(`User created: ${user.email} (${user._id})`);
 
+=======
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
         const token = generateToken(user._id);
 
         res.status(201).json({
@@ -158,6 +164,7 @@ exports.resetPassword = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+<<<<<<< HEAD
 
 // @desc    Google Login
 // @route   POST /api/auth/google
@@ -207,3 +214,5 @@ exports.googleLogin = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+=======
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be

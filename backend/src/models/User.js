@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
+<<<<<<< HEAD
         minlength: 6,
         select: false,
     },
@@ -25,6 +26,12 @@ const userSchema = new mongoose.Schema({
         unique: true,
         sparse: true,
     },
+=======
+        required: [true, 'Please provide a password'],
+        minlength: 6,
+        select: false,
+    },
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
     role: {
         type: String,
         enum: ['student', 'teacher'],
@@ -36,8 +43,13 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
+<<<<<<< HEAD
     if (!this.isModified('password') || !this.password) {
         return next();
+=======
+    if (!this.isModified('password')) {
+        next();
+>>>>>>> eb350fc1270f051cd81901d9cb9f9a48dbc543be
     }
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);

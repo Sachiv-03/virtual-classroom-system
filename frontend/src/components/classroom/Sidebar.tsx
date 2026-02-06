@@ -2,28 +2,30 @@
  import { NavLink } from "@/components/NavLink";
  import { Button } from "@/components/ui/button";
  import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
- import {
-   LayoutDashboard,
-   BookOpen,
-   Calendar,
-   MessageSquare,
-   FileText,
-   Settings,
-   LogOut,
-   GraduationCap,
-   ChevronLeft,
-   ChevronRight,
- } from "lucide-react";
- import { cn } from "@/lib/utils";
- 
- const navItems = [
-   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-   { icon: BookOpen, label: "My Courses", path: "/courses" },
-   { icon: Calendar, label: "Schedule", path: "/schedule" },
-   { icon: MessageSquare, label: "Messages", path: "/messages" },
-   { icon: FileText, label: "Assignments", path: "/assignments" },
-   { icon: Settings, label: "Settings", path: "/settings" },
- ];
+import {
+  LayoutDashboard,
+  BookOpen,
+  Calendar,
+  MessageSquare,
+  FileText,
+  Settings,
+  LogOut,
+  GraduationCap,
+  ChevronLeft,
+  ChevronRight,
+  Trophy,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const navItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: BookOpen, label: "My Courses", path: "/courses" },
+  { icon: Trophy, label: "Achievements", path: "/achievements" },
+  { icon: Calendar, label: "Schedule", path: "/schedule" },
+  { icon: MessageSquare, label: "Messages", path: "/messages" },
+  { icon: FileText, label: "Assignments", path: "/assignments" },
+  { icon: Settings, label: "Settings", path: "/settings" },
+];
  
  export function Sidebar() {
    const [collapsed, setCollapsed] = useState(false);

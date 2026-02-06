@@ -1,9 +1,10 @@
- import { Card, CardContent, CardHeader } from "@/components/ui/card";
- import { Badge } from "@/components/ui/badge";
- import { Button } from "@/components/ui/button";
- import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, Users, Video, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
  
  interface ClassCardProps {
    subject: string;
@@ -37,17 +38,25 @@ const iconBg = {
   purple: "bg-focus/10 text-focus",
  };
  
- export function ClassCard({
-   subject,
-   teacher,
-   teacherAvatar,
-   time,
-   duration,
-   students,
-   isLive,
-   color,
- }: ClassCardProps) {
-   return (
+export function ClassCard({
+  subject,
+  teacher,
+  teacherAvatar,
+  time,
+  duration,
+  students,
+  isLive,
+  color,
+}: ClassCardProps) {
+  const navigate = useNavigate();
+
+  const handleJoinClass = () => {
+    if (isLive) {
+      navigate("/live");
+    }
+  };
+
+  return (
     <Card className={cn(
       "group relative overflow-hidden transition-all duration-500 border bg-gradient-to-br",
       "hover:shadow-2xl hover:-translate-y-2 hover:scale-[1.02]",
@@ -95,19 +104,20 @@ const iconBg = {
              <span>{students}</span>
            </div>
          </div>
-         <Button 
+        <Button 
           className={cn(
             "w-full group/btn transition-all duration-300",
             isLive 
               ? "bg-live hover:bg-live/90 shadow-lg shadow-live/20" 
               : "hover:translate-x-1"
           )} 
-           variant={isLive ? "default" : "outline"}
-         >
-           <Video className="h-4 w-4 mr-2" />
-           {isLive ? "Join Now" : "View Details"}
+          variant={isLive ? "default" : "outline"}
+          onClick={handleJoinClass}
+        >
+          <Video className="h-4 w-4 mr-2" />
+          {isLive ? "Join Now" : "View Details"}
           <ArrowRight className="h-4 w-4 ml-2 opacity-0 -translate-x-2 group-hover/btn:opacity-100 group-hover/btn:translate-x-0 transition-all" />
-         </Button>
+        </Button>
        </CardContent>
      </Card>
    );

@@ -37,8 +37,16 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Enable CORS
 app.use(cors({
+    origin: true, // Allow any origin
+    credentials: true, // Allow cookies
     exposedHeaders: ['Content-Disposition']
 }));
+
+// Logging middleware
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
 
 // Mount routers
 const courseRoutes = require('./routes/courseRoutes');

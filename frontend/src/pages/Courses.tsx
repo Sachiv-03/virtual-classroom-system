@@ -56,8 +56,9 @@ const Courses = () => {
         }));
         setCourses(data);
         setFilteredCourses(data);
-      } catch (error) {
-        toast.error("Failed to fetch courses");
+      } catch (error: any) {
+        console.error("Error fetching courses:", error);
+        toast.error(error.response?.data?.message || error.message || "Failed to fetch courses");
       } finally {
         setLoading(false);
       }

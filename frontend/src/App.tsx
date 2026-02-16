@@ -22,6 +22,7 @@ import Assignments from "./pages/Assignments";
 import Settings from "./pages/Settings";
 import AdminSyllabusUpload from "./pages/AdminSyllabusUpload";
 import SyllabusViewer from "./pages/SyllabusViewer";
+import AttendanceDashboard from "./pages/AttendanceDashboard";
 
 const queryClient = new QueryClient();
 
@@ -44,7 +45,8 @@ const AppContent = () => (
       <Route path="/courses/new" element={<PrivateRoute><CreateCourse /></PrivateRoute>} />
       <Route path="/courses/:courseId" element={<PrivateRoute><Syllabus /></PrivateRoute>} />
       <Route path="/achievements" element={<PrivateRoute><Gamification /></PrivateRoute>} />
-      <Route path="/live" element={<PrivateRoute><LiveClassroom /></PrivateRoute>} />
+      <Route path="/live/:courseId" element={<PrivateRoute><LiveClassroom /></PrivateRoute>} />
+      <Route path="/attendance/:courseId" element={<PrivateRoute><AttendanceDashboard /></PrivateRoute>} />
       <Route path="/schedule" element={<PrivateRoute><Schedule /></PrivateRoute>} />
       <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
       <Route path="/assignments" element={<PrivateRoute><Assignments /></PrivateRoute>} />

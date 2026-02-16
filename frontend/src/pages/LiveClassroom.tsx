@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { VideoGrid, Participant } from "@/components/classroom/live/VideoGrid";
 import { ChatPanel } from "@/components/classroom/live/ChatPanel";
@@ -8,6 +8,10 @@ import { ControlBar } from "@/components/classroom/live/ControlBar";
 import { ArrowLeft, Maximize, Grid3X3, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { markAttendance } from "@/services/attendanceService";
+import { useAuth } from "@/context/AuthContext";
 
 const mockParticipants: Participant[] = [
   {
@@ -80,19 +84,37 @@ const mockParticipants: Participant[] = [
 ];
 
 const LiveClassroom = () => {
+  const { courseId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [participants, setParticipants] = useState<Participant[]>(mockParticipants);
-  
+
+  useEffect(() => {
+    if (user) {
+      setParticipants(prev => prev.map(p =>
+        p.id === "2" ? { ...p, name: `${user.name} (You)`, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}` } : p
+      ));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (courseId) {
+      markAttendance(courseId)
+        .then(() => toast.success("Attendance marked successfully"))
+        .catch(() => toast.error("Failed to mark attendance"));
+    }
+  }, [courseId]);
+
   // Control states
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
-  
+
   // Panel states
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
-  
+
   // View states
   const [pinnedParticipant, setPinnedParticipant] = useState<string | undefined>("1");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -120,7 +142,7 @@ const LiveClassroom = () => {
 
   const handleToggleHand = () => {
     setIsHandRaised(!isHandRaised);
-    setParticipants(prev => prev.map(p => 
+    setParticipants(prev => prev.map(p =>
       p.id === "2" ? { ...p, isHandRaised: !p.isHandRaised } : p
     ));
   };
@@ -134,15 +156,15 @@ const LiveClassroom = () => {
       {/* Top Bar */}
       <header className="flex items-center justify-between px-4 py-3 bg-card border-b border-border">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="h-9 w-9"
             onClick={() => navigate("/")}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          
+
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gradient-primary">
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
@@ -160,16 +182,16 @@ const LiveClassroom = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="icon"
             onClick={() => setPinnedParticipant(undefined)}
             className={cn(!pinnedParticipant && "bg-muted")}
           >
             <Grid3X3 className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="icon"
             onClick={() => {
               if (document.fullscreenElement) {
@@ -189,7 +211,7 @@ const LiveClassroom = () => {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Video Grid */}
-        <VideoGrid 
+        <VideoGrid
           participants={participants}
           pinnedParticipant={pinnedParticipant}
           onPinParticipant={handlePinParticipant}
@@ -200,11 +222,11 @@ const LiveClassroom = () => {
         {isChatOpen && (
           <ChatPanel className="w-80 flex-shrink-0" />
         )}
-        
+
         {isParticipantsOpen && (
-          <ParticipantsList 
-            participants={participants} 
-            className="w-72 flex-shrink-0" 
+          <ParticipantsList
+            participants={participants}
+            className="w-72 flex-shrink-0"
           />
         )}
 

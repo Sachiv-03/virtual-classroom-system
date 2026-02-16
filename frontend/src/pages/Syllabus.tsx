@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { BookOpen, Play, FileText, ChevronLeft, CheckCircle } from "lucide-react";
+import { BookOpen, Play, FileText, ChevronLeft, CheckCircle, Video, BarChart2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
@@ -145,6 +145,22 @@ const Syllabus = () => {
                                     <span>{course.enrolledStudents} enrolled</span>
                                 </div>
                             </div>
+
+                            <div className="flex gap-4 mt-6">
+                                <Button
+                                    className="gap-2 bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                                    onClick={() => navigate(`/live/${courseId}`)}
+                                >
+                                    <Video className="h-4 w-4" /> Join Live Class
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    className="gap-2"
+                                    onClick={() => navigate(`/attendance/${courseId}`)}
+                                >
+                                    <BarChart2 className="h-4 w-4" /> View Attendance
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
@@ -216,7 +232,7 @@ const Syllabus = () => {
                                         <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                                             <div className="h-full bg-primary w-0 transition-all duration-500" />
                                         </div>
-                                        <p className="text-xs text-muted-foreground">Start your learning journey today!</p>
+                                        <p className="text-xs text-muted-foreground">Continue your coursework to advance your progress.</p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -277,7 +293,7 @@ const Syllabus = () => {
                                 <div className="prose max-w-none">
                                     <p>{selectedTopic?.content}</p>
                                     <p className="mt-4 text-muted-foreground">
-                                        Detailed reading content would be displayed here. Since this is a demo, we are showing the placeholder text.
+                                        The full content for this topic is currently being updated. Please check back shortly for the complete material.
                                     </p>
                                 </div>
                             </div>
@@ -286,7 +302,7 @@ const Syllabus = () => {
                     <div className="p-4 border-t flex justify-between items-center bg-background">
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Close</Button>
                         <Button onClick={() => {
-                            toast.success("Marked as complete!");
+                            toast.success("Topic marked as completed.");
                             setIsDialogOpen(false);
                         }}>Mark as Complete</Button>
                     </div>

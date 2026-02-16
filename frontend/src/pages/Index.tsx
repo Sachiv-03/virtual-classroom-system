@@ -99,8 +99,8 @@ const Index = () => {
             <h1 className="text-3xl font-bold tracking-tight">Welcome back, {user?.name}!</h1>
             <p className="text-muted-foreground text-sm">
               {isTeacher
-                ? "Here's what's happening across your modules today."
-                : "Your learning progress is looking great! Let's hit your goals."}
+                ? "Overview of your current teaching modules and student performance."
+                : "Track your academic progress and upcoming deadlines."}
             </p>
           </div>
 
@@ -120,7 +120,7 @@ const Index = () => {
                   icon={ClipboardList}
                   label="All Assignments"
                   value={stats?.totalAssignments || "0"}
-                  trend="Track your impact"
+                  trend="Assignment Overview"
                 />
                 <StatsCard
                   icon={CheckSquare}
@@ -133,7 +133,7 @@ const Index = () => {
                   icon={BarChart}
                   label="Pending Evaluation"
                   value={stats?.pendingGrading || "0"}
-                  trend="Update your grades"
+                  trend="Requires attention"
                   trendUp={stats?.pendingGrading > 10}
                 />
               </>
@@ -143,28 +143,28 @@ const Index = () => {
                   icon={BookOpen}
                   label="Assigned"
                   value={stats?.totalAssignments || "0"}
-                  trend="Total tasks"
+                  trend="Total assignments"
                   variant="gradient"
                 />
                 <StatsCard
                   icon={Trophy}
                   label="Completed"
                   value={stats?.submittedAssignments || "0"}
-                  trend="Way to go!"
+                  trend="Tasks completed"
                   trendUp
                 />
                 <StatsCard
                   icon={Target}
                   label="Average Marks"
                   value={stats?.avgMarks || "0%"}
-                  trend="Keep improving"
+                  trend="Performance metric"
                   trendUp
                 />
                 <StatsCard
                   icon={Clock}
                   label="Pending Tasks"
                   value={stats?.pendingAssignments || "0"}
-                  trend="Manage your time"
+                  trend="Action required"
                   trendUp={stats?.pendingAssignments > 2}
                 />
               </>
@@ -216,7 +216,7 @@ const Index = () => {
                     </Button>
                     <Button variant="outline" className="justify-start h-11 gap-3" onClick={() => toast.info("Exporting performance data...")}>
                       <BarChart className="h-5 w-5 text-purple-500" />
-                      Class Analytics
+                      View Analytics
                     </Button>
                   </div>
                 </div>

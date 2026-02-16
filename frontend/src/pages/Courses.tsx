@@ -120,7 +120,7 @@ const Courses = () => {
                 {isTeacher ? "Courses You Teach" : "My Enrolled Courses"}
               </h2>
               <p className="text-muted-foreground mt-1">
-                {isTeacher ? "Manage your curriculum and student engagement" : "Continue learning and track your progress"}
+                {isTeacher ? "Manage curriculum content and monitor student engagement." : "Access your enrolled courses and track your learning progress."}
               </p>
             </div>
 
@@ -165,7 +165,7 @@ const Courses = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCourses.length === 0 ? (
               <div className="col-span-full text-center py-12 text-muted-foreground">
-                No courses found matching your criteria.
+                No courses match your current search criteria.
               </div>
             ) : (
               filteredCourses.map((course, index) => (

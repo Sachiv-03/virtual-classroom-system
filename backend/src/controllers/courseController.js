@@ -88,3 +88,22 @@ exports.deleteCourse = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
+// Add schedule to a course
+exports.addSchedule = async (req, res) => {
+    try {
+        const course = await Course.findById(req.params.id);
+        if (!course) {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+
+        const { day, startTime, endTime, room } = req.body;
+
+        // Push to schedule array
+        course.schedule.push({ day, startTime, endTime, room });
+
+        const updatedCourse = await course.save();
+        res.status(201).json(updatedCourse);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+};

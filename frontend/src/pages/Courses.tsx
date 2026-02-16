@@ -106,7 +106,7 @@ const Courses = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background bg-gradient-mesh">
+    <div className="min-h-screen bg-background">
       <Sidebar />
 
       <main className="ml-64 transition-all duration-300">

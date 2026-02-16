@@ -5,6 +5,11 @@ export const markAttendance = async (courseId: string) => {
     return response.data;
 };
 
+export const getAllUserAttendance = async () => {
+    const response = await api.get('/attendance/all');
+    return response.data;
+};
+
 export const getAttendanceAnalytics = async (courseId: string) => {
     const response = await api.get(`/attendance/analytics/${courseId}`);
     return response.data;

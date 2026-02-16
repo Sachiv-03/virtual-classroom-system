@@ -7,6 +7,8 @@ const { validateAttendance, validateCourseIdParam } = require('../middleware/val
 const attendanceLimiter = require('../middleware/attendanceLimiter');
 
 router.post('/mark', protect, attendanceLimiter, validateAttendance, attendanceController.markAttendance);
+router.get('/all', protect, attendanceController.getAllAttendance);
+router.put('/update', protect, attendanceController.updateAttendance);
 router.get('/analytics/:courseId', protect, validateCourseIdParam, attendanceController.getAnalytics);
 router.get('/report/:courseId', protect, validateCourseIdParam, attendanceController.generateReport);
 

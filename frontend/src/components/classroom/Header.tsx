@@ -33,24 +33,22 @@ export function Header() {
   };
 
   return (
-    <header className="flex items-center justify-between p-6 bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
+    <header className="h-16 flex items-center justify-between px-6 bg-background border-b border-border sticky top-0 z-40">
       <div>
-        <h1 className="text-2xl font-bold text-card-foreground flex items-center gap-2">
-          {greeting}, <span className="gradient-text">{user?.name?.split(' ')[0] || "Student"}!</span>
-          <span className="animate-float inline-block">👋</span>
+        <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+          {greeting}, {user?.name?.split(' ')[0] || "Student"}
         </h1>
-        <p className="text-muted-foreground">{today}</p>
       </div>
 
       <div className="flex items-center gap-4">
         <form onSubmit={handleSearch} className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             id="search-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search courses, teachers..."
-            className="pl-10 w-64 bg-background/50 border-border/50 focus:bg-background focus:border-primary/50 transition-all focus:w-80 shadow-sm"
+            placeholder="Search..."
+            className="pl-10 w-64 bg-background border-input focus:ring-primary focus:border-primary transition-all"
           />
         </form>
 

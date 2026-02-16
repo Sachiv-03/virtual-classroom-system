@@ -60,11 +60,27 @@ const classes = [
   },
 ];
 
+import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+
 const Index = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isTeacher = user?.role === 'teacher';
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [announcementText, setAnnouncementText] = useState("");
 
   useEffect(() => {
     fetchDashboardData();
@@ -86,8 +102,14 @@ const Index = () => {
     }
   };
 
+  const handleSendAnnouncement = () => {
+    toast.success("Announcement sent to all students!");
+    setAnnouncementOpen(false);
+    setAnnouncementText("");
+  };
+
   return (
-    <div className="min-h-screen bg-background bg-gradient-mesh">
+    <div className="min-h-screen bg-background">
       <Sidebar />
 
       {/* Main Content */}
@@ -206,18 +228,54 @@ const Index = () => {
                     Quick Management
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
-                    <Button variant="outline" className="justify-start h-11 gap-3" onClick={() => toast.info("Opening course creator...")}>
+                    <Button variant="outline" className="justify-start h-11 gap-3" onClick={() => navigate('/courses/new')}>
                       <PlusCircle className="h-5 w-5 text-blue-500" />
                       Create New Course
                     </Button>
-                    <Button variant="outline" className="justify-start h-11 gap-3" onClick={() => toast.info("Composing announcement...")}>
-                      <Megaphone className="h-5 w-5 text-orange-500" />
-                      Send Announcement
-                    </Button>
-                    <Button variant="outline" className="justify-start h-11 gap-3" onClick={() => toast.info("Exporting performance data...")}>
-                      <BarChart className="h-5 w-5 text-purple-500" />
-                      View Analytics
-                    </Button>
+
+                    <Dialog open={announcementOpen} onOpenChange={setAnnouncementOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="justify-start h-11 gap-3">
+                          <Megaphone className="h-5 w-5 text-orange-500" />
+                          Send Announcement
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Send Announcement</DialogTitle>
+                          <DialogDescription>Notify all your students with an important update.</DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                          <Textarea
+                            placeholder="Type your announcement here..."
+                            value={announcementText}
+                            onChange={(e) => setAnnouncementText(e.target.value)}
+                            className="min-h-[100px]"
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button onClick={handleSendAnnouncement}>Send Now</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="justify-start h-11 gap-3">
+                          <BarChart className="h-5 w-5 text-purple-500" />
+                          View Analytics
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-[800px]">
+                        <DialogHeader>
+                          <DialogTitle>Detailed Analytics</DialogTitle>
+                          <DialogDescription>Performance metrics across all your courses.</DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 h-[300px] flex items-center justify-center border rounded bg-slate-50 dark:bg-slate-900/50">
+                          <p className="text-muted-foreground">Advanced analytics chart integration coming soon.</p>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
               )}

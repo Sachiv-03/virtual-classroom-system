@@ -16,12 +16,12 @@ const quickStats = [
 
 const Gamification = () => {
   return (
-    <div className="min-h-screen bg-background bg-gradient-mesh">
+    <div className="min-h-screen bg-background">
       <Sidebar />
-      
+
       <main className="ml-64 transition-all duration-300">
         <Header />
-        
+
         <div className="p-6 space-y-6 animate-fade-in">
           {/* Page Header */}
           <div className="flex items-center justify-between">
@@ -40,7 +40,7 @@ const Gamification = () => {
             {quickStats.map((stat, index) => {
               const Icon = stat.icon;
               return (
-                <div 
+                <div
                   key={index}
                   className="p-4 rounded-xl bg-card border border-border hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
                 >
@@ -62,7 +62,7 @@ const Gamification = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column - XP & Quests */}
             <div className="space-y-6">
-              <XPProgressCard 
+              <XPProgressCard
                 currentXP={2450}
                 level={12}
                 xpToNextLevel={3000}
@@ -78,9 +78,9 @@ const Gamification = () => {
             {/* Right Column - Badges */}
             <div className="space-y-6">
               <BadgesDisplay />
-              
+
               {/* Upcoming Rewards */}
-              <div className="rounded-2xl bg-gradient-to-br from-focus/10 to-primary/10 border border-focus/20 p-5">
+              <div className="rounded-2xl bg-card border border-border p-5">
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Target className="h-5 w-5 text-focus" />
                   Next Milestone

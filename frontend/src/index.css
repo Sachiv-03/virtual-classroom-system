@@ -2,12 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design System - Virtual Classroom with Focus Mode */
+/* Design System - Professional/Enterprise SaaS Theme */
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 222 47% 11%;
+    /* Neural / Slate Color Palette for Professional feel */
+    --background: 210 40% 98%; /* Slate 50 */
+    --foreground: 222 47% 11%; /* Slate 900 */
 
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -15,26 +16,27 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 100%;
+    /* Solid, reliable Blue (Inter/Stripe style) */
+    --primary: 221 83% 53%; 
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 220 14% 96%;
+    --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 220 14% 96%;
+    --muted: 210 40% 96.1%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
     --ring: 221 83% 53%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem; /* Sharper, more professional radius */
 
     /* Custom tokens */
     --success: 142 76% 36%;
@@ -46,18 +48,15 @@
     --focus: 262 83% 58%;
     --focus-foreground: 0 0% 100%;
 
+    /* Professional Dark Sidebar */
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 40% 18%;
+    --sidebar-accent: 217 33% 17%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 40% 20%;
-    --sidebar-ring: 221 83% 53%;
-
-    --gradient-start: 221 83% 53%;
-    --gradient-end: 262 83% 58%;
-    --gradient-accent: 25 95% 53%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 217 91% 60%;
   }
 
   .dark {
@@ -71,7 +70,7 @@
     --popover-foreground: 210 40% 98%;
 
     --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 222 47% 11%;
 
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
@@ -79,10 +78,10 @@
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 12 76% 61%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 63% 31%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 217 33% 17%;
@@ -91,7 +90,7 @@
 
     --sidebar-background: 222 47% 6%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 222 40% 12%;
     --sidebar-accent-foreground: 210 40% 98%;
@@ -111,58 +110,24 @@
 }
 
 @layer components {
-  .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-lg;
-  }
+  /* Removed .glass, .glass-dark, .gradient-text to look more professional */
   
-  .glass-dark {
-    @apply bg-black/20 backdrop-blur-xl border border-white/10;
-  }
-  
-  .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-focus;
-  }
-  
-  .bg-gradient-mesh {
-    background-color: hsl(var(--background));
-    background-image: 
-      radial-gradient(at 0% 0%, hsl(var(--primary) / 0.05) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, hsl(var(--accent) / 0.05) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, hsl(var(--focus) / 0.05) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsl(var(--primary) / 0.05) 0px, transparent 50%);
+  /* Solid Utility Classes */
+  .bg-subtle {
+    @apply bg-muted/50;
   }
 
-  .bg-gradient-primary {
-    @apply bg-gradient-to-br from-primary to-focus;
-  }
-  
-  .focus-ring {
-    @apply ring-2 ring-focus/30 ring-offset-2 ring-offset-background;
-  }
-  
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-primary/20;
+    @apply transition-all duration-200 hover:shadow-md hover:border-primary/20;
   }
   
-  .glow {
-    box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.3);
-  }
-  
-  .glow-accent {
-    box-shadow: 0 0 40px -10px hsl(var(--accent) / 0.4);
-  }
-
-  /* Animations */
+  /* Subtle animations only */
   .animate-fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
+    animation: fadeIn 0.3s ease-out forwards;
   }
 
   .animate-slide-up {
-    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
+    animation: slideUp 0.4s ease-out forwards;
   }
 
   @keyframes fadeIn {
@@ -171,16 +136,10 @@
   }
 
   @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
 }
-
 
 @layer utilities {
   .text-balance {

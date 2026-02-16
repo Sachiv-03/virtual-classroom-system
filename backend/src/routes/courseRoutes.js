@@ -15,5 +15,6 @@ router.get('/:id', asyncMiddleware(courseController.getCourseById));
 router.post('/', asyncMiddleware(courseController.createCourse));
 router.put('/:id', asyncMiddleware(courseController.updateCourse));
 router.delete('/:id', asyncMiddleware(courseController.deleteCourse));
+router.post('/:id/schedule', asyncMiddleware(courseController.addSchedule));
 
 module.exports = router;

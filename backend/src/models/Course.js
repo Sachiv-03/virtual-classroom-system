@@ -26,6 +26,12 @@ const courseSchema = new mongoose.Schema({
     title: { type: String, required: true },
     teacher: { type: String },
     category: { type: String },
+    schedule: [{
+        day: { type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
+        startTime: { type: String }, // Format: "09:00"
+        endTime: { type: String },   // Format: "10:30"
+        room: { type: String }
+    }],
     thumbnail: { type: String },
     rating: { type: Number, default: 0 },
     enrolledStudents: { type: Number, default: 0 },

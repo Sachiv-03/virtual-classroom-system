@@ -81,6 +81,21 @@ exports.getAnalytics = async (req, res) => {
     }
 };
 
+// Get all attendance records for a student across all courses
+exports.getAllAttendance = async (req, res) => {
+    try {
+        const studentId = req.user._id;
+        const attendances = await Attendance.find({ student: studentId })
+            .populate('course', 'title')
+            .sort({ date: -1 });
+
+        res.json(attendances);
+    } catch (error) {
+        console.error('Error fetching all attendance:', error);
+        res.status(500).json({ message: 'Server error fetching all attendance' });
+    }
+};
+
 // Generate monthly attendance report PDF
 exports.generateReport = async (req, res) => {
     try {
@@ -141,5 +156,29 @@ exports.generateReport = async (req, res) => {
     } catch (error) {
         console.error('Error generating report:', error);
         res.status(500).json({ message: 'Server error generating report' });
+    }
+};
+
+// Update attendance status (Teacher only)
+exports.updateAttendance = async (req, res) => {
+    try {
+        if (req.user.role !== 'teacher') {
+            return res.status(403).json({ message: 'Only teachers can update attendance manually' });
+        }
+
+        const { attendanceId, status } = req.body;
+
+        const attendance = await Attendance.findById(attendanceId);
+        if (!attendance) {
+            return res.status(404).json({ message: 'Attendance record not found' });
+        }
+
+        attendance.status = status || attendance.status;
+        await attendance.save();
+
+        res.json(attendance);
+    } catch (error) {
+        console.error('Error updating attendance:', error);
+        res.status(500).json({ message: 'Server error updating attendance' });
     }
 };

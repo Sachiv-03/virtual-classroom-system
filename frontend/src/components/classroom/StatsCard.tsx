@@ -18,7 +18,7 @@ export function StatsCard({ icon: Icon, label, value, trend, trendUp, variant = 
     <Card
       className={cn(
         "group transition-all duration-300 hover:shadow-lg hover:-translate-y-1 overflow-hidden cursor-pointer",
-        variant === "gradient" && "bg-gradient-primary text-primary-foreground border-0"
+        variant === "gradient" && "bg-primary text-primary-foreground border-0"
       )}
       onClick={() => toast.info(`Viewing details for ${label}`)}
     >

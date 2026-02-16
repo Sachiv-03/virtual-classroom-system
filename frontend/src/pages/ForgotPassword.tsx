@@ -48,10 +48,10 @@ const ForgotPassword = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-mesh p-4">
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <div className="w-full max-w-md space-y-8 bg-card/80 backdrop-blur-xl p-8 rounded-2xl border border-border shadow-2xl animate-fade-in">
                 <div className="text-center">
-                    <div className="inline-flex p-3 rounded-xl bg-gradient-primary mb-4">
+                    <div className="inline-flex p-3 rounded-xl bg-primary mb-4">
                         <GraduationCap className="h-8 w-8 text-primary-foreground" />
                     </div>
                     <h2 className="text-3xl font-bold tracking-tight text-foreground">
@@ -84,7 +84,7 @@ const ForgotPassword = () => {
 
                         <Button
                             type="submit"
-                            className="w-full bg-gradient-primary hover:opacity-90 transition-opacity"
+                            className="w-full"
                             disabled={loading}
                             id="send-otp-button"
                         >
@@ -123,7 +123,7 @@ const ForgotPassword = () => {
 
                         <Button
                             type="submit"
-                            className="w-full bg-gradient-primary hover:opacity-90 transition-opacity mt-4"
+                            className="w-full mt-4"
                             disabled={loading}
                             id="reset-password-button"
                         >

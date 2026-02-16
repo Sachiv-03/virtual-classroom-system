@@ -53,7 +53,7 @@ const SyllabusViewer = () => {
     if (!syllabus) return <div className="flex justify-center items-center h-screen">Syllabus not found.</div>;
 
     return (
-        <div className="min-h-screen bg-gradient-mesh p-6 md:p-12">
+        <div className="min-h-screen bg-background p-6 md:p-12">
             <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
 
                 {/* Header Section */}

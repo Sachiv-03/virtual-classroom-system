@@ -14,7 +14,7 @@ export function StreakCard() {
 
   return (
     <div
-      className="p-5 rounded-2xl bg-gradient-to-br from-accent/10 via-accent/5 to-transparent border border-accent/20 cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+      className="p-5 rounded-2xl bg-card border border-border cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
       onClick={() => toast.success("You're on fire! 4 day streak!")}
     >
       <div className="flex items-center justify-between mb-4">
@@ -38,8 +38,8 @@ export function StreakCard() {
           <div
             key={i}
             className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${d.active
-                ? "bg-accent text-accent-foreground"
-                : "bg-muted text-muted-foreground"
+              ? "bg-accent text-accent-foreground"
+              : "bg-muted text-muted-foreground"
               }`}
           >
             <span className="text-xs font-medium">{d.day}</span>

@@ -60,6 +60,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/syllabus', syllabusRoutes);
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
+app.use('/api/announcements', require('./routes/announcementRoutes'));
 
 app.get('/', (req, res) => {
     res.send('API is running...');

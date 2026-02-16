@@ -60,6 +60,10 @@ const classes = [
   },
 ];
 
+import { createAnnouncement, getLatestAnnouncements } from "@/services/announcementService";
+import { formatDistanceToNow } from 'date-fns';
+
+
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -81,10 +85,22 @@ const Index = () => {
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [announcementText, setAnnouncementText] = useState("");
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+
 
   useEffect(() => {
     fetchDashboardData();
+    fetchAnnouncements();
   }, [user]);
+
+  const fetchAnnouncements = async () => {
+    try {
+      const data = await getLatestAnnouncements();
+      setAnnouncements(data);
+    } catch (error) {
+      console.error("Failed to fetch announcements", error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -102,10 +118,20 @@ const Index = () => {
     }
   };
 
-  const handleSendAnnouncement = () => {
-    toast.success("Announcement sent to all students!");
-    setAnnouncementOpen(false);
-    setAnnouncementText("");
+  const handleSendAnnouncement = async () => {
+    if (!announcementText.trim()) {
+      toast.error("Please enter announcement content");
+      return;
+    }
+    try {
+      await createAnnouncement(announcementText);
+      toast.success("Announcement sent successfully!");
+      setAnnouncementOpen(false);
+      setAnnouncementText("");
+      fetchAnnouncements();
+    } catch (error) {
+      toast.error("Failed to send announcement");
+    }
   };
 
   return (
@@ -193,6 +219,31 @@ const Index = () => {
             )}
           </div>
 
+          {/* Announcements Section */}
+          {announcements.length > 0 && (
+            <div className="bg-card border rounded-xl p-6">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Megaphone className="h-5 w-5 text-orange-500" />
+                School Announcements
+              </h3>
+              <div className="space-y-4">
+                {announcements.map((announcement: any) => (
+                  <div key={announcement._id} className="p-4 bg-muted/50 rounded-lg flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-medium">{announcement.content}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                        <span className="font-semibold">{announcement.author?.name}</span>
+                        <span>•</span>
+                        {/* Using a safe fallback if date invalid or just simple string if lib issue */}
+                        <span>{announcement.createdAt && new Date(announcement.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Today's Classes */}
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -210,6 +261,8 @@ const Index = () => {
               ))}
             </div>
           </div>
+
+
 
           {/* Bottom Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

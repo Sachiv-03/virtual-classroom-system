@@ -1,184 +1,181 @@
 const Attendance = require('../models/Attendance');
 const Course = require('../models/Course');
 const PDFDocument = require('pdfkit');
+const asyncHandler = require('../utils/asyncHandler');
+const ErrorResponse = require('../utils/errorResponse');
+const mongoose = require('mongoose');
 
-// Mark attendance
-exports.markAttendance = async (req, res) => {
-    try {
-        const { courseId } = req.body;
-        const studentId = req.user._id;
+// @desc    Mark attendance
+// @route   POST /api/attendance/mark
+// @access  Private
+exports.markAttendance = asyncHandler(async (req, res, next) => {
+    const { courseId } = req.body;
+    const studentId = req.user.id;
 
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
-        let attendance = await Attendance.findOne({
-            student: studentId,
-            course: courseId,
-            date: startOfDay
+    let attendance = await Attendance.findOne({
+        student: studentId,
+        course: courseId,
+        date: startOfDay
+    });
+
+    if (attendance) {
+        return res.status(200).json({
+            success: true,
+            data: attendance
         });
-
-        if (attendance) {
-            return res.status(200).json(attendance);
-        }
-
-        attendance = await Attendance.create({
-            student: studentId,
-            course: courseId,
-            date: startOfDay,
-            status: 'Present',
-            checkInTime: new Date()
-        });
-
-        res.status(201).json(attendance);
-
-    } catch (error) {
-        console.error('Error marking attendance:', error);
-        res.status(500).json({ message: 'Server error marking attendance' });
     }
-};
 
-// Get attendance analytics for a student in a course
-exports.getAnalytics = async (req, res) => {
-    try {
-        const { courseId } = req.params;
-        const studentId = req.user._id;
+    attendance = await Attendance.create({
+        student: studentId,
+        course: courseId,
+        date: startOfDay,
+        status: 'Present',
+        checkInTime: new Date()
+    });
 
-        const totalLectures = 30; // Hardcoded or fetch from Course model if available
-        const attendedLectures = await Attendance.countDocuments({
-            student: studentId,
-            course: courseId,
-            status: 'Present'
-        });
+    res.status(201).json({
+        success: true,
+        data: attendance
+    });
+});
 
-        const attendancePercentage = (attendedLectures / totalLectures) * 100;
+// @desc    Get attendance analytics
+// @route   GET /api/attendance/analytics/:courseId
+// @access  Private
+exports.getAnalytics = asyncHandler(async (req, res, next) => {
+    const { courseId } = req.params;
+    const studentId = req.user.id;
 
-        const monthlyData = await Attendance.aggregate([
-            {
-                $match: {
-                    student: studentId,
-                    course: new mongoose.Types.ObjectId(courseId)
-                }
-            },
-            {
-                $group: {
-                    _id: { $month: "$date" },
-                    count: { $sum: 1 }
-                }
-            },
-            { $sort: { "_id": 1 } }
-        ]);
+    const totalLectures = 30; // Mock value
+    const attendedLectures = await Attendance.countDocuments({
+        student: studentId,
+        course: courseId,
+        status: 'Present'
+    });
 
-        res.json({
+    const attendancePercentage = (attendedLectures / totalLectures) * 100;
+
+    const monthlyData = await Attendance.aggregate([
+        {
+            $match: {
+                student: new mongoose.Types.ObjectId(studentId),
+                course: new mongoose.Types.ObjectId(courseId)
+            }
+        },
+        {
+            $group: {
+                _id: { $month: "$date" },
+                count: { $sum: 1 }
+            }
+        },
+        { $sort: { "_id": 1 } }
+    ]);
+
+    res.json({
+        success: true,
+        data: {
             totalLectures,
             attendedLectures,
             attendancePercentage: attendancePercentage.toFixed(2),
             monthlyData
-        });
-
-    } catch (error) {
-        console.error('Error fetching analytics:', error);
-        res.status(500).json({ message: 'Server error fetching analytics' });
-    }
-};
-
-// Get all attendance records for a student across all courses
-exports.getAllAttendance = async (req, res) => {
-    try {
-        const studentId = req.user._id;
-        const attendances = await Attendance.find({ student: studentId })
-            .populate('course', 'title')
-            .sort({ date: -1 });
-
-        res.json(attendances);
-    } catch (error) {
-        console.error('Error fetching all attendance:', error);
-        res.status(500).json({ message: 'Server error fetching all attendance' });
-    }
-};
-
-// Generate monthly attendance report PDF
-exports.generateReport = async (req, res) => {
-    try {
-        const { courseId } = req.params;
-        const studentId = req.user._id;
-
-        const attendances = await Attendance.find({
-            student: studentId,
-            course: courseId
-        }).populate('course', 'title').sort({ date: 1 });
-
-        if (attendances.length === 0) {
-            return res.status(404).json({ message: 'No attendance records found' });
         }
+    });
+});
 
-        const doc = new PDFDocument();
-        const filename = `attendance_report_${studentId}.pdf`;
+// @desc    Get all attendance records for user
+// @route   GET /api/attendance/all
+// @access  Private
+exports.getAllAttendance = asyncHandler(async (req, res, next) => {
+    const studentId = req.user.id;
+    const attendances = await Attendance.find({ student: studentId })
+        .populate('course', 'title')
+        .sort({ date: -1 });
 
-        res.setHeader('Content-disposition', `attachment; filename="${filename}"`);
-        res.setHeader('Content-type', 'application/pdf');
+    res.json({
+        success: true,
+        count: attendances.length,
+        data: attendances
+    });
+});
 
-        doc.pipe(res);
+// @desc    Generate attendance report PDF
+// @route   GET /api/attendance/report/:courseId
+// @access  Private
+exports.generateReport = asyncHandler(async (req, res, next) => {
+    const { courseId } = req.params;
+    const studentId = req.user.id;
 
-        // Header
-        doc.fontSize(20).text('Monthly Attendance Report', { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(14).text(`Course: ${attendances[0].course.title}`);
-        doc.text(`Student ID: ${studentId}`);
-        doc.moveDown();
+    const attendances = await Attendance.find({
+        student: studentId,
+        course: courseId
+    }).populate('course', 'title').sort({ date: 1 });
 
-        // Table Header
-        const tableTop = 200;
-        const itemHeight = 30;
-
-        doc.fontSize(12).font('Helvetica-Bold');
-        doc.text('Date', 50, tableTop);
-        doc.text('Status', 200, tableTop);
-        doc.text('Check-in Time', 350, tableTop);
-
-        doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
-
-        let currentHeight = tableTop + 30;
-        doc.font('Helvetica');
-
-        attendances.forEach(record => {
-            const date = new Date(record.date).toLocaleDateString();
-            const time = new Date(record.checkInTime).toLocaleTimeString();
-
-            doc.text(date, 50, currentHeight);
-            doc.text(record.status, 200, currentHeight);
-            doc.text(time, 350, currentHeight);
-
-            currentHeight += itemHeight;
-        });
-
-        doc.end();
-
-    } catch (error) {
-        console.error('Error generating report:', error);
-        res.status(500).json({ message: 'Server error generating report' });
+    if (attendances.length === 0) {
+        return next(new ErrorResponse('No attendance records found', 404));
     }
-};
 
-// Update attendance status (Teacher only)
-exports.updateAttendance = async (req, res) => {
-    try {
-        if (req.user.role !== 'teacher') {
-            return res.status(403).json({ message: 'Only teachers can update attendance manually' });
-        }
+    const doc = new PDFDocument();
+    const filename = `attendance_report_${studentId}.pdf`;
 
-        const { attendanceId, status } = req.body;
+    res.setHeader('Content-disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-type', 'application/pdf');
 
-        const attendance = await Attendance.findById(attendanceId);
-        if (!attendance) {
-            return res.status(404).json({ message: 'Attendance record not found' });
-        }
+    doc.pipe(res);
 
-        attendance.status = status || attendance.status;
-        await attendance.save();
+    // Header
+    doc.fontSize(20).text('Monthly Attendance Report', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(14).text(`Course: ${attendances[0].course.title}`);
+    doc.text(`Student ID: ${studentId}`);
+    doc.moveDown();
 
-        res.json(attendance);
-    } catch (error) {
-        console.error('Error updating attendance:', error);
-        res.status(500).json({ message: 'Server error updating attendance' });
+    // Table Header
+    const tableTop = 200;
+    const itemHeight = 30;
+
+    doc.fontSize(12).font('Helvetica-Bold');
+    doc.text('Date', 50, tableTop);
+    doc.text('Status', 200, tableTop);
+    doc.text('Check-in Time', 350, tableTop);
+
+    doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
+
+    let currentHeight = tableTop + 30;
+    doc.font('Helvetica');
+
+    attendances.forEach(record => {
+        const date = new Date(record.date).toLocaleDateString();
+        const time = new Date(record.checkInTime).toLocaleTimeString();
+
+        doc.text(date, 50, currentHeight);
+        doc.text(record.status, 200, currentHeight);
+        doc.text(time, 350, currentHeight);
+
+        currentHeight += itemHeight;
+    });
+
+    doc.end();
+});
+
+// @desc    Update attendance status
+// @route   PUT /api/attendance/update
+// @access  Private/Teacher
+exports.updateAttendance = asyncHandler(async (req, res, next) => {
+    const { attendanceId, status } = req.body;
+
+    const attendance = await Attendance.findById(attendanceId);
+    if (!attendance) {
+        return next(new ErrorResponse('Attendance record not found', 404));
     }
-};
+
+    attendance.status = status || attendance.status;
+    await attendance.save();
+
+    res.json({
+        success: true,
+        data: attendance
+    });
+});

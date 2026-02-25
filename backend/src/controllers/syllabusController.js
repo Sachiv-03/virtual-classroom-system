@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse'); // Ensure this package is installed: npm install pdf-parse
 const Syllabus = require('../models/Syllabus');
+const asyncHandler = require('../utils/asyncHandler');
+const ErrorResponse = require('../utils/errorResponse');
 
 // Helper function to extract structured data from PDF text
 const extractSyllabusData = (text) => {
@@ -18,62 +20,48 @@ const extractSyllabusData = (text) => {
     };
 
     // --- Basic Header Parsing (Naive Heuristics) ---
-    // Try to find Course Code (e.g., CS101, MAT202)
     const codeMatch = text.match(/Course\s*Code\s*[:\-\s]\s*([A-Z]{2,}\s*[0-9]{3,})/i) ||
-        text.match(/([A-Z]{2,}[0-9]{3,})/); // Fallback to just looking for code-like pattern
+        text.match(/([A-Z]{2,}[0-9]{3,})/);
     if (codeMatch) data.courseCode = codeMatch[1].trim();
 
-    // Try to find Semester (e.g., Semester IV, Semester 4)
     const semMatch = text.match(/Semester\s*[:\-\s]\s*([IVX0-9]+)/i);
     if (semMatch) data.semester = semMatch[1].trim();
 
-    // Try to find Academic Year (e.g., 2023-2024, 2023-24)
     const yearMatch = text.match(/Academic\s*Year\s*[:\-\s]\s*([0-9]{4}\s*-\s*[0-9]{2,4})/i);
     if (yearMatch) data.academicYear = yearMatch[1].trim();
-    else data.academicYear = new Date().getFullYear().toString(); // Default if not found
+    else data.academicYear = new Date().getFullYear().toString();
 
-    // Try to find Course Title (Usually the first non-empty line or near "Course Name")
     const titleMatch = text.match(/Course\s*(?:Title|Name)\s*[:\-\s](.+)/i);
     if (titleMatch) {
         data.courseTitle = titleMatch[1].trim();
     } else {
-        // Fallback: Use the first significant line as title
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
         if (lines.length > 0) data.courseTitle = lines[0];
     }
 
     // --- Parse Units ---
-    // Look for patterns like "UNIT I", "Unit 1", "Module 1"
-    // We split the text by these markers.
     const unitRegex = /(?:UNIT|Unit|Module|Chapter)\s+([IVX0-9]+)(?:\s*[:\-])?/g;
     let match;
     let lastIndex = 0;
     let currentUnit = null;
 
-    // Reset regex index
     while ((match = unitRegex.exec(text)) !== null) {
         if (currentUnit) {
-            // Capture text for the previous unit
             const content = text.substring(lastIndex, match.index).trim();
-            // Split content into title and topics roughly
             const contentLines = content.split('\n').map(l => l.trim()).filter(l => l);
             if (contentLines.length > 0) {
-                // Assume first line after UNIT X is the unit title
                 currentUnit.unitTitle = contentLines[0];
-                // Rest are topics
                 currentUnit.topics = contentLines.slice(1);
             }
             data.units.push(currentUnit);
         }
 
         currentUnit = { unitNo: match[1], unitTitle: '', topics: [] };
-        lastIndex = unitRegex.lastIndex; // Move past "UNIT I"
+        lastIndex = unitRegex.lastIndex;
     }
 
-    // Capture the last unit
     if (currentUnit) {
         const content = text.substring(lastIndex).trim();
-        // Stop capturing if we hit "Textbooks" or "References"
         const stopIndex = content.search(/(Text\s*Books|References|Course\s*Outcomes)/i);
         const unitContent = stopIndex !== -1 ? content.substring(0, stopIndex) : content;
 
@@ -85,7 +73,6 @@ const extractSyllabusData = (text) => {
         data.units.push(currentUnit);
     }
 
-    // --- Extract Textbooks/References (Basic) ---
     const textBooksSection = text.match(/(?:Text\s*Books?|Reference\s*Books?)([\s\S]*?)(?:Course\s*Outcomes|Unit|$)/i);
     if (textBooksSection) {
         data.textbooks = textBooksSection[1].split('\n').map(l => l.trim()).filter(l => l.length > 3);
@@ -97,115 +84,112 @@ const extractSyllabusData = (text) => {
 // @desc    Upload Syllabus PDF and Parse
 // @route   POST /api/syllabus/upload
 // @access  Admin
-exports.uploadSyllabus = async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'No file uploaded' });
-        }
-
-        const filePath = req.file.path;
-
-        // Read the file buffer
-        const dataBuffer = fs.readFileSync(filePath);
-
-        // Parse PDF
-        const pdfData = await pdf(dataBuffer);
-        const extractedText = pdfData.text;
-
-        // Auto-structure Content
-        const structuredData = extractSyllabusData(extractedText);
-
-        // Add file path to structured data
-        structuredData.pdfPath = filePath;
-
-        // Create new Syllabus entry
-        const syllabus = new Syllabus(structuredData);
-        await syllabus.save();
-
-        res.status(201).json({
-            message: 'Syllabus uploaded and parsed successfully',
-            syllabus: syllabus
-        });
-    } catch (error) {
-        console.error(error);
-        if (error.code === 11000) {
-            // Duplicate key error
-            res.status(400).json({ message: 'Syllabus for this Course Code and Academic Year already exists.' });
-        } else {
-            res.status(500).json({ message: 'Server Error during parsing or saving.' });
-        }
+exports.uploadSyllabus = asyncHandler(async (req, res, next) => {
+    if (!req.file) {
+        return next(new ErrorResponse('Please upload a file', 400));
     }
-};
 
-// @desc    Get Syllabus by Course ID (or Code? Using MongoDB ID for now)
+    const filePath = req.file.path;
+    const dataBuffer = fs.readFileSync(filePath);
+
+    // Parse PDF
+    const pdfData = await pdf(dataBuffer);
+    const extractedText = pdfData.text;
+
+    // Auto-structure Content
+    const structuredData = extractSyllabusData(extractedText);
+    structuredData.pdfPath = filePath;
+
+    // Create new Syllabus entry
+    const syllabus = new Syllabus(structuredData);
+    await syllabus.save();
+
+    res.status(201).json({
+        success: true,
+        message: 'Syllabus uploaded and parsed successfully',
+        data: syllabus
+    });
+});
+
+// @desc    Get Syllabus by ID
 // @route   GET /api/syllabus/:id
-// @access  Public/Student
-exports.getSyllabusById = async (req, res) => {
-    try {
-        const syllabus = await Syllabus.findById(req.params.id);
-        if (!syllabus) return res.status(404).json({ message: 'Syllabus not found' });
-        res.json(syllabus);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+// @access  Public
+exports.getSyllabusById = asyncHandler(async (req, res, next) => {
+    const syllabus = await Syllabus.findById(req.params.id);
+    if (!syllabus) {
+        return next(new ErrorResponse(`Syllabus not found with id of ${req.params.id}`, 404));
     }
-};
+
+    res.status(200).json({
+        success: true,
+        data: syllabus
+    });
+});
 
 // @desc    Get All Syllabi
 // @route   GET /api/syllabus
 // @access  Public
-exports.getAllSyllabi = async (req, res) => {
-    try {
-        const syllabi = await Syllabus.find().sort({ createdAt: -1 });
-        res.json(syllabi);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
+exports.getAllSyllabi = asyncHandler(async (req, res, next) => {
+    const syllabi = await Syllabus.find().sort({ createdAt: -1 });
+    res.status(200).json({
+        success: true,
+        count: syllabi.length,
+        data: syllabi
+    });
+});
 
 // @desc    Get Syllabus by Semester
 // @route   GET /api/syllabus/semester/:semester
 // @access  Public
-exports.getSyllabusBySemester = async (req, res) => {
-    try {
-        const syllabi = await Syllabus.find({ semester: req.params.semester });
-        res.json(syllabi);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
+exports.getSyllabusBySemester = asyncHandler(async (req, res, next) => {
+    const syllabi = await Syllabus.find({ semester: req.params.semester });
+    res.status(200).json({
+        success: true,
+        count: syllabi.length,
+        data: syllabi
+    });
+});
 
-// @desc    Update Syllabus (for corrections after parsing)
+// @desc    Update Syllabus
 // @route   PUT /api/syllabus/:id
 // @access  Admin
-exports.updateSyllabus = async (req, res) => {
-    try {
-        const syllabus = await Syllabus.findById(req.params.id);
-        if (!syllabus) return res.status(404).json({ message: 'Syllabus not found' });
+exports.updateSyllabus = asyncHandler(async (req, res, next) => {
+    let syllabus = await Syllabus.findById(req.params.id);
 
-        const updatedSyllabus = await Syllabus.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        res.json(updatedSyllabus);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    if (!syllabus) {
+        return next(new ErrorResponse(`Syllabus not found with id of ${req.params.id}`, 404));
     }
-};
+
+    syllabus = await Syllabus.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true
+    });
+
+    res.status(200).json({
+        success: true,
+        data: syllabus
+    });
+});
 
 // @desc    Delete Syllabus
 // @route   DELETE /api/syllabus/:id
 // @access  Admin
-exports.deleteSyllabus = async (req, res) => {
-    try {
-        const syllabus = await Syllabus.findById(req.params.id);
-        if (!syllabus) return res.status(404).json({ message: 'Syllabus not found' });
+exports.deleteSyllabus = asyncHandler(async (req, res, next) => {
+    const syllabus = await Syllabus.findById(req.params.id);
 
-        // Optionally delete the file too
-        if (syllabus.pdfPath && fs.existsSync(syllabus.pdfPath)) {
-            fs.unlinkSync(syllabus.pdfPath);
-        }
-
-        await Syllabus.deleteOne({ _id: req.params.id });
-        res.json({ message: 'Syllabus removed' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    if (!syllabus) {
+        return next(new ErrorResponse(`Syllabus not found with id of ${req.params.id}`, 404));
     }
-};
+
+    // Delete PDF file
+    if (syllabus.pdfPath && fs.existsSync(syllabus.pdfPath)) {
+        fs.unlinkSync(syllabus.pdfPath);
+    }
+
+    await syllabus.deleteOne();
+
+    res.status(200).json({
+        success: true,
+        data: {}
+    });
+});

@@ -26,6 +26,7 @@ import { toast } from "sonner";
 
 const classes = [
   {
+    id: "math-101",
     subject: "Advanced Mathematics",
     teacher: "Dr. Sarah Wilson",
     time: "9:00 AM",
@@ -35,6 +36,7 @@ const classes = [
     color: "blue" as const,
   },
   {
+    id: "phys-101",
     subject: "Physics 101",
     teacher: "Prof. Michael Chen",
     time: "11:00 AM",
@@ -43,6 +45,7 @@ const classes = [
     color: "orange" as const,
   },
   {
+    id: "eng-101",
     subject: "English Literature",
     teacher: "Ms. Emily Brown",
     time: "2:00 PM",
@@ -51,6 +54,7 @@ const classes = [
     color: "green" as const,
   },
   {
+    id: "cs-101",
     subject: "Computer Science",
     teacher: "Mr. David Lee",
     time: "4:00 PM",
@@ -96,7 +100,9 @@ const Index = () => {
   const fetchAnnouncements = async () => {
     try {
       const data = await getLatestAnnouncements();
-      setAnnouncements(data);
+      // Robust extraction: data might be the already unwrapped array or { success, data }
+      const announcementList = Array.isArray(data) ? data : (data.data || []);
+      setAnnouncements(announcementList);
     } catch (error) {
       console.error("Failed to fetch announcements", error);
     }
@@ -105,13 +111,15 @@ const Index = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const data = isTeacher
+      const res = isTeacher
         ? await getTeacherDashboardStats()
         : await getStudentDashboardStats();
-      setStats(data.data);
+
+      // Robust extraction: res might be the unwrapped stats object or { success, data }
+      const statsObj = (res && res.success === undefined) ? res : (res?.data || {});
+      setStats(statsObj);
     } catch (error) {
       console.error("Dashboard error:", error);
-      // Fallback to zeros if error
       setStats({});
     } finally {
       setLoading(false);

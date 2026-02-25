@@ -1,66 +1,81 @@
 const express = require('express');
 const dotenv = require('dotenv');
-
-// Load env vars immediately
-dotenv.config();
-
 const cors = require('cors');
-const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const authRoutes = require('./routes/authRoutes');
-const assignmentRoutes = require('./routes/assignmentRoutes');
-const submissionRoutes = require('./routes/submissionRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+const compression = require('compression');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
-// Connect to database
-const connectDB = async () => {
-    try {
-        const conn = await mongoose.connect(process.env.MONGO_URI);
-        console.log(`MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
-    } catch (error) {
-        console.error(`Error: ${error.message}`);
-        process.exit(1);
-    }
-};
+// Load env vars
+dotenv.config();
 
+// Connect to database
 connectDB();
 
 const app = express();
 
+// Security Headers
+app.use(helmet());
+
+// Logging
+if (process.env.NODE_ENV === 'development') {
+    app.use(morgan('dev'));
+}
+
 // Body parser
-app.use(express.json());
+app.use(express.json({ limit: '10kb' })); // Limit body size
 app.use(cookieParser());
+
+// Data sanitization against NoSQL injection
+app.use(mongoSanitize());
+
+// Data sanitization against XSS
+app.use(xss());
+
+// Prevent parameter pollution
+app.use(hpp());
+
+// Compression
+app.use(compression());
 
 // Static folder
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Enable CORS
-app.use(cors({
-    origin: true, // Allow any origin
-    credentials: true, // Allow cookies
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production'
+        ? process.env.FRONTEND_URL
+        : true,
+    credentials: true,
     exposedHeaders: ['Content-Disposition']
-}));
+};
+app.use(cors(corsOptions));
 
-// Logging middleware
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-    next();
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 10 * 60 * 1000, // 10 minutes
+    max: 100, // Limit each IP to 100 requests per window
+    message: 'Too many requests from this IP, please try again after 10 minutes'
 });
+app.use('/api', limiter);
 
 // Mount routers
-const courseRoutes = require('./routes/courseRoutes');
-const syllabusRoutes = require('./routes/syllabusRoutes');
-
-app.use('/api/auth', authRoutes);
-app.use('/api/assignments', assignmentRoutes);
-app.use('/api/submissions', submissionRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/courses', courseRoutes);
-app.use('/api/syllabus', syllabusRoutes);
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/assignments', require('./routes/assignmentRoutes'));
+app.use('/api/submissions', require('./routes/submissionRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/courses', require('./routes/courseRoutes'));
+app.use('/api/syllabus', require('./routes/syllabusRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
+app.use('/api/google-auth', require('./routes/googleAuthRoutes'));
 
 app.get('/', (req, res) => {
     res.send('API is running...');
@@ -71,6 +86,21 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err, promise) => {
+    console.log(`Error: ${err.message}`);
+    // Close server & exit process
+    server.close(() => process.exit(1));
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received. Shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+    });
 });

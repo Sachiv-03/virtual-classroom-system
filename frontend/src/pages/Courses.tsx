@@ -49,7 +49,10 @@ const Courses = () => {
     const fetchCourses = async () => {
       try {
         const response = await api.get('/courses');
-        const data = response.data.map((course: any, index: number) => ({
+        // Handle both unwrapped and wrapped responses
+        const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
+
+        const data = rawData.map((course: any, index: number) => ({
           ...course,
           color: Object.keys(colorVariants)[index % 4], // Assign cyclic colors
           progress: Math.floor(Math.random() * 100) // Mock progress for now

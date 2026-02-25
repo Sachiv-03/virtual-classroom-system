@@ -30,11 +30,14 @@ export const GradingModal = ({ isOpen, onClose, assignment }: GradingModalProps)
         setLoading(true);
         try {
             const res = await getSubmissionsForAssignment(assignment._id);
-            setSubmissions(res.data);
+
+            // Robust extraction of the submissions array
+            const submissionsArray = Array.isArray(res) ? res : (res.data || []);
+            setSubmissions(submissionsArray);
 
             // Initialize grading data
             const initialGrading: any = {};
-            res.data.forEach((s: any) => {
+            submissionsArray.forEach((s: any) => {
                 initialGrading[s._id] = {
                     marks: s.marks || 0,
                     feedback: s.feedback || ""

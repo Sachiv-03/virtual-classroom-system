@@ -2,19 +2,15 @@ const express = require('express');
 const router = express.Router();
 const courseController = require('../controllers/courseController');
 
-// Helper to wrap async functions because Express 4 doesn't support async/await natively in routes
-// No need for a separate error handler middleware here if we just handle the promise but for safety:
-const asyncMiddleware = fn =>
-    (req, res, next) => {
-        Promise.resolve(fn(req, res, next))
-            .catch(next);
-    };
+const { protect, authorize } = require('../middleware/authMiddleware');
+const advancedResults = require('../middleware/advancedResults');
+const Course = require('../models/Course');
 
-router.get('/', asyncMiddleware(courseController.getAllCourses));
-router.get('/:id', asyncMiddleware(courseController.getCourseById));
-router.post('/', asyncMiddleware(courseController.createCourse));
-router.put('/:id', asyncMiddleware(courseController.updateCourse));
-router.delete('/:id', asyncMiddleware(courseController.deleteCourse));
-router.post('/:id/schedule', asyncMiddleware(courseController.addSchedule));
+router.get('/', advancedResults(Course), courseController.getAllCourses);
+router.get('/:id', courseController.getCourseById);
+router.post('/', protect, authorize('teacher'), courseController.createCourse);
+router.put('/:id', protect, authorize('teacher'), courseController.updateCourse);
+router.delete('/:id', protect, authorize('teacher'), courseController.deleteCourse);
+router.post('/:id/schedule', protect, authorize('teacher'), courseController.addSchedule);
 
 module.exports = router;

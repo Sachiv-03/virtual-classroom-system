@@ -16,4 +16,25 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Add Interceptor for Response Formatting
+api.interceptors.response.use(
+    (response) => {
+        // If the response follows the standard { success: true, data: ... } format, unwrap it
+        if (response.data && response.data.success === true && response.data.data !== undefined) {
+            return {
+                ...response,
+                data: response.data.data,
+                meta: response.data.pagination || response.data.count ? {
+                    count: response.data.count,
+                    pagination: response.data.pagination
+                } : undefined
+            };
+        }
+        return response;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 export default api;

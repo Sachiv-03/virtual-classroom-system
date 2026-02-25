@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
 interface ClassCardProps {
+  id?: string;
   subject: string;
   teacher: string;
   teacherAvatar?: string;
@@ -39,6 +40,7 @@ const iconBg = {
 };
 
 export function ClassCard({
+  id,
   subject,
   teacher,
   teacherAvatar,
@@ -52,7 +54,9 @@ export function ClassCard({
 
   const handleJoinClass = () => {
     if (isLive) {
-      navigate("/live");
+      navigate(`/live/${id || 'default'}`);
+    } else {
+      navigate(`/courses/${id || 'default'}`);
     }
   };
 

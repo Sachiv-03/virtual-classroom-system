@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { markAttendance } from "@/services/attendanceService";
+import { getCourseById } from "@/services/courseService";
 import { useAuth } from "@/context/AuthContext";
 
 const mockParticipants: Participant[] = [
@@ -88,6 +89,7 @@ const LiveClassroom = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [participants, setParticipants] = useState<Participant[]>(mockParticipants);
+  const [course, setCourse] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -98,7 +100,11 @@ const LiveClassroom = () => {
   }, [user]);
 
   useEffect(() => {
-    if (courseId) {
+    if (courseId && courseId !== 'default' && courseId.length > 5) {
+      getCourseById(courseId)
+        .then(data => setCourse(data))
+        .catch(err => console.error("Failed to fetch course details", err));
+
       markAttendance(courseId)
         .then(() => toast.success("Attendance marked successfully"))
         .catch(() => toast.error("Failed to mark attendance"));
@@ -171,12 +177,12 @@ const LiveClassroom = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-semibold text-foreground">Advanced Mathematics</h1>
+                <h1 className="font-semibold text-foreground">{course?.title || "Advanced Mathematics"}</h1>
                 <Badge className="bg-live text-live-foreground animate-pulse">
                   LIVE
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground">Dr. Sarah Wilson • Calculus II</p>
+              <p className="text-sm text-muted-foreground">{course?.teacher || "Dr. Sarah Wilson"} • {course?.category || "Calculus II"}</p>
             </div>
           </div>
         </div>

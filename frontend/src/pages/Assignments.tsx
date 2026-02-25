@@ -47,7 +47,10 @@ const Assignments = () => {
         setLoading(true);
         try {
             const data = await getAssignments();
-            setAssignments(data.data);
+            // If the interceptor already unwrapped it, data is the array
+            // Otherwise, extract from data.data
+            const assignmentsArray = Array.isArray(data) ? data : (data.data || []);
+            setAssignments(assignmentsArray);
         } catch (error) {
             toast.error("Failed to fetch assignments");
         } finally {

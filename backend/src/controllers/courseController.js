@@ -1,109 +1,110 @@
 const Course = require('../models/Course');
-
+const asyncHandler = require('../utils/asyncHandler');
+const ErrorResponse = require('../utils/errorResponse');
 
 // Get all courses
-exports.getAllCourses = async (req, res) => {
-    try {
+exports.getAllCourses = asyncHandler(async (req, res, next) => {
+    if (res.advancedResults) {
+        return res.status(200).json(res.advancedResults);
+    } else {
         const courses = await Course.find();
-        res.json(courses);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+        return res.json(courses);
     }
-};
+});
 
 // Get a single course by ID
-exports.getCourseById = async (req, res) => {
-    try {
-        const course = await Course.findById(req.params.id);
-        if (!course) {
-            return res.status(404).json({ message: 'Course not found' });
-        }
-        res.json(course);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+exports.getCourseById = asyncHandler(async (req, res, next) => {
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+        return next(new ErrorResponse(`Course not found with id of ${req.params.id}`, 404));
     }
-};
+    res.json(course);
+});
 
-// Create a new course (for admin/teacher use or seeding)
-exports.createCourse = async (req, res) => {
-    const course = new Course({
-        title: req.body.title,
-        description: req.body.description,
-        teacher: req.body.teacher,
-        category: req.body.category,
-        thumbnail: req.body.thumbnail,
-        rating: req.body.rating,
-        enrolledStudents: req.body.enrolledStudents,
-        lessonsCount: req.body.lessonsCount,
-        units: req.body.units,
-        price: req.body.price
-    });
-
-    try {
-        const newCourse = await course.save();
-        res.status(201).json(newCourse);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
-    }
-};
+// Create a new course
+exports.createCourse = asyncHandler(async (req, res, next) => {
+    const course = await Course.create(req.body);
+    res.status(201).json(course);
+});
 
 // Update a course
-exports.updateCourse = async (req, res) => {
-    try {
-        const course = await Course.findById(req.params.id);
-        if (!course) {
-            return res.status(404).json({ message: 'Course not found' });
-        }
+exports.updateCourse = asyncHandler(async (req, res, next) => {
+    let course = await Course.findById(req.params.id);
 
-        if (req.body.title != null) {
-            course.title = req.body.title;
-        }
-        if (req.body.description != null) {
-            course.description = req.body.description;
-        }
-        if (req.body.teacher != null) {
-            course.teacher = req.body.teacher;
-        }
-        if (req.body.category != null) {
-            course.category = req.body.category;
-        }
-
-        const updatedCourse = await course.save();
-        res.json(updatedCourse);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
+    if (!course) {
+        return next(new ErrorResponse(`Course not found with id of ${req.params.id}`, 404));
     }
-};
+
+    course = await Course.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+        runValidators: true
+    });
+
+    res.json(course);
+});
 
 // Delete a course
-exports.deleteCourse = async (req, res) => {
-    try {
-        const course = await Course.findById(req.params.id);
-        if (!course) {
-            return res.status(404).json({ message: 'Course not found' });
-        }
-        await course.remove();
-        res.json({ message: 'Course deleted' });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+exports.deleteCourse = asyncHandler(async (req, res, next) => {
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+        return next(new ErrorResponse(`Course not found with id of ${req.params.id}`, 404));
     }
-};
+
+    await course.deleteOne();
+    res.json({ message: 'Course deleted' });
+});
+const googleMeet = require('../utils/googleMeet');
+const n8nService = require('../services/n8nService');
+
 // Add schedule to a course
-exports.addSchedule = async (req, res) => {
-    try {
-        const course = await Course.findById(req.params.id);
-        if (!course) {
-            return res.status(404).json({ message: 'Course not found' });
-        }
-
-        const { day, startTime, endTime, room } = req.body;
-
-        // Push to schedule array
-        course.schedule.push({ day, startTime, endTime, room });
-
-        const updatedCourse = await course.save();
-        res.status(201).json(updatedCourse);
-    } catch (err) {
-        res.status(400).json({ message: err.message });
+exports.addSchedule = asyncHandler(async (req, res, next) => {
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+        return next(new ErrorResponse(`Course not found with id of ${req.params.id}`, 404));
     }
-};
+
+    const { day, startTime, endTime, room } = req.body;
+
+    // --- 1. Programmatically trigger Google Meet link generation ---
+    let meetLink = '';
+    try {
+        // We use the ID of the user currently making the request (teacher)
+        // to fetch their OAuth tokens and create the event.
+        meetLink = await googleMeet.createMeetLink({
+            title: course.title,
+            startTime,
+            endTime,
+            date: req.body.date // Option to provide a specific date, otherwise utility defaults to today
+        }, req.user.id);
+
+        console.log(`Generated Meet Link: ${meetLink}`);
+    } catch (error) {
+        console.warn('Could not generate Meet link automatically:', error.message);
+        // We can choose to fail the request or continue with an empty link
+    }
+
+    // --- 2. Store the Meet link in MongoDB along with class details ---
+    const newScheduleSlot = {
+        day,
+        startTime,
+        endTime,
+        room: room || 'Online',
+        meetLink
+    };
+
+    course.schedule.push(newScheduleSlot);
+
+    await course.save();
+
+    // --- 3. Trigger n8n Webhook for automation ---
+    // This will allow you to automate Slack notifications, Emails, etc.
+    n8nService.triggerWebhook('CLASS_SCHEDULED', {
+        courseId: course._id,
+        courseTitle: course.title,
+        teacher: course.teacher,
+        schedule: newScheduleSlot
+    });
+
+    res.status(201).json(course);
+});

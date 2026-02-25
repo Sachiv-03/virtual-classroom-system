@@ -30,7 +30,8 @@ const courseSchema = new mongoose.Schema({
         day: { type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
         startTime: { type: String }, // Format: "09:00"
         endTime: { type: String },   // Format: "10:30"
-        room: { type: String }
+        room: { type: String },
+        meetLink: { type: String }
     }],
     thumbnail: { type: String },
     rating: { type: Number, default: 0 },
@@ -42,5 +43,9 @@ const courseSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+// Add indexes
+courseSchema.index({ category: 1 });
+courseSchema.index({ title: 'text', description: 'text' });
 
 module.exports = mongoose.model('Course', courseSchema);

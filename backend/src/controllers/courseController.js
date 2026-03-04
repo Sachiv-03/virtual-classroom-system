@@ -23,7 +23,12 @@ exports.getCourseById = asyncHandler(async (req, res, next) => {
 
 // Create a new course
 exports.createCourse = asyncHandler(async (req, res, next) => {
-    const course = await Course.create(req.body);
+    const courseData = { ...req.body, teacherId: req.user.id };
+    // If frontend didn't pass a teacher name, grab it from user (mocking it for backwards compatibility if needed)
+    if (!courseData.teacher && req.user.name) {
+        courseData.teacher = req.user.name;
+    }
+    const course = await Course.create(courseData);
     res.status(201).json(course);
 });
 

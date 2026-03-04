@@ -1,6 +1,7 @@
 const Assignment = require('../models/Assignment');
 const Submission = require('../models/Submission');
 const User = require('../models/User');
+const FocusSession = require('../models/FocusSession');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
@@ -76,6 +77,10 @@ exports.getStudentDashboard = asyncHandler(async (req, res, next) => {
 
     const avgMarks = gradedCount > 0 ? (totalMarks / gradedCount).toFixed(2) : 0;
 
+    // Fetch actual focus sessions
+    const focusSessions = await FocusSession.find({ user: studentId });
+    const totalFocusMinutes = Math.floor(focusSessions.reduce((acc, curr) => acc + curr.duration, 0) / 60);
+
     res.status(200).json({
         success: true,
         data: {
@@ -84,7 +89,7 @@ exports.getStudentDashboard = asyncHandler(async (req, res, next) => {
             pendingAssignments,
             avgMarks: `${avgMarks}%`,
             enrolledCourses: 8, // Mock
-            focusScore: '92%' // Mock
+            focusScore: totalFocusMinutes > 0 ? `${totalFocusMinutes} mins` : '0 mins'
         }
     });
 });

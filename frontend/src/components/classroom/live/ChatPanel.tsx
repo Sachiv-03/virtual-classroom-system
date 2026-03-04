@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Send, Smile, Paperclip, MoreVertical } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -118,7 +119,7 @@ export function ChatPanel({ className }: ChatPanelProps) {
           <h3 className="font-semibold text-foreground">Class Chat</h3>
           <p className="text-xs text-muted-foreground">{messages.length} messages</p>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info("Feature coming soon")}>
           <MoreVertical className="h-4 w-4" />
         </Button>
       </div>
@@ -143,7 +144,7 @@ export function ChatPanel({ className }: ChatPanelProps) {
                     <AvatarImage src={msg.avatar} />
                     <AvatarFallback className="text-xs">{msg.initials}</AvatarFallback>
                   </Avatar>
-                  
+
                   <div className={cn(
                     "max-w-[80%]",
                     msg.isOwn && "text-right"
@@ -161,8 +162,8 @@ export function ChatPanel({ className }: ChatPanelProps) {
                     </div>
                     <div className={cn(
                       "rounded-2xl px-3 py-2 text-sm",
-                      msg.isOwn 
-                        ? "bg-primary text-primary-foreground rounded-tr-sm" 
+                      msg.isOwn
+                        ? "bg-primary text-primary-foreground rounded-tr-sm"
                         : "bg-muted text-foreground rounded-tl-sm"
                     )}>
                       {msg.message}
@@ -178,10 +179,10 @@ export function ChatPanel({ className }: ChatPanelProps) {
       {/* Input */}
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => toast.info("Attachments coming soon")}>
             <Paperclip className="h-4 w-4 text-muted-foreground" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => toast.info("Emojis coming soon")}>
             <Smile className="h-4 w-4 text-muted-foreground" />
           </Button>
           <Input
@@ -191,8 +192,8 @@ export function ChatPanel({ className }: ChatPanelProps) {
             className="flex-1"
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
-          <Button 
-            size="icon" 
+          <Button
+            size="icon"
             className="h-8 w-8 flex-shrink-0"
             onClick={sendMessage}
             disabled={!newMessage.trim()}

@@ -24,7 +24,8 @@ const unitSchema = new mongoose.Schema({
 
 const courseSchema = new mongoose.Schema({
     title: { type: String, required: true },
-    teacher: { type: String },
+    teacher: { type: String }, // Keep as string for backwards compatibility / quick UI
+    teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     category: { type: String },
     schedule: [{
         day: { type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },

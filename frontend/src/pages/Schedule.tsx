@@ -115,6 +115,23 @@ const Schedule = () => {
     const dayName = date?.toLocaleDateString('en-US', { weekday: 'long' });
     const todaysClasses = upcomingClasses.filter(c => c.day === dayName);
 
+    const isClassLive = (startTime: string, endTime: string) => {
+        if (!date) return false;
+
+        const today = new Date();
+        if (date.toDateString() !== today.toDateString()) return false;
+
+        const now = today.getHours() * 60 + today.getMinutes();
+
+        const [startHs, startMs] = startTime.split(':').map(Number);
+        const [endHs, endMs] = endTime.split(':').map(Number);
+
+        const start = startHs * 60 + startMs;
+        const end = endHs * 60 + endMs;
+
+        return now >= start && now <= end;
+    };
+
     return (
         <div className="min-h-screen bg-background">
             <Sidebar />
@@ -239,28 +256,31 @@ const Schedule = () => {
                                                     No classes scheduled for this day.
                                                 </div>
                                             ) : (
-                                                todaysClasses.map((item, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="flex items-center justify-between p-4 border rounded-lg bg-card/50 hover:bg-accent/50 transition-all cursor-pointer group"
-                                                        onClick={() => navigate(`/live/${item.courseId || 'default'}`)}
-                                                    >
-                                                        <div className="flex gap-4">
-                                                            <div className="font-mono text-primary font-bold w-20 flex items-center gap-2">
-                                                                <Clock className="h-4 w-4" />
-                                                                {item.startTime}
+                                                todaysClasses.map((item, i) => {
+                                                    const isLive = isClassLive(item.startTime, item.endTime);
+                                                    return (
+                                                        <div
+                                                            key={i}
+                                                            className="flex items-center justify-between p-4 border rounded-lg bg-card/50 hover:bg-accent/50 transition-all cursor-pointer group"
+                                                            onClick={() => navigate(`/live/${item.courseId || 'default'}`)}
+                                                        >
+                                                            <div className="flex gap-4">
+                                                                <div className="font-mono text-primary font-bold w-20 flex items-center gap-2">
+                                                                    <Clock className="h-4 w-4" />
+                                                                    {item.startTime}
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-bold group-hover:text-primary transition-colors">{item.subject}</h4>
+                                                                    <p className="text-sm text-muted-foreground">{item.room} • {item.teacher}</p>
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <h4 className="font-bold group-hover:text-primary transition-colors">{item.subject}</h4>
-                                                                <p className="text-sm text-muted-foreground">{item.room} • {item.teacher}</p>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`h-2 w-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`} title={isLive ? "Live Now" : "Scheduled"} />
+                                                                <Video className={`h-5 w-5 transition-colors ${isLive ? 'text-live' : 'text-muted-foreground group-hover:text-live'}`} />
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" title="Scheduled" />
-                                                            <Video className="h-5 w-5 text-muted-foreground group-hover:text-live transition-colors" />
-                                                        </div>
-                                                    </div>
-                                                )))}
+                                                    )
+                                                }))}
                                         </div>
                                     </CardContent>
                                 </Card>

@@ -33,6 +33,16 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   return token ? <>{children}</> : <Navigate to="/login" />;
 };
 
+const TeacherRoute = ({ children }: { children: React.ReactNode }) => {
+  const { token, user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  if (!token) return <Navigate to="/login" />;
+  if (user?.role !== 'teacher' && user?.role !== 'admin') return <Navigate to="/" />;
+
+  return <>{children}</>;
+};
+
 const AppContent = () => (
   <BrowserRouter>
     <Routes>
@@ -42,7 +52,7 @@ const AppContent = () => (
 
       <Route path="/" element={<PrivateRoute><Index /></PrivateRoute>} />
       <Route path="/courses" element={<PrivateRoute><Courses /></PrivateRoute>} />
-      <Route path="/courses/new" element={<PrivateRoute><CreateCourse /></PrivateRoute>} />
+      <Route path="/courses/new" element={<TeacherRoute><CreateCourse /></TeacherRoute>} />
       <Route path="/courses/:courseId" element={<PrivateRoute><Syllabus /></PrivateRoute>} />
       <Route path="/achievements" element={<PrivateRoute><Gamification /></PrivateRoute>} />
       <Route path="/live/:courseId" element={<PrivateRoute><LiveClassroom /></PrivateRoute>} />
@@ -53,7 +63,7 @@ const AppContent = () => (
       <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
 
       {/* New Syllabus Routes */}
-      <Route path="/admin/syllabus/upload" element={<PrivateRoute><AdminSyllabusUpload /></PrivateRoute>} />
+      <Route path="/admin/syllabus/upload" element={<TeacherRoute><AdminSyllabusUpload /></TeacherRoute>} />
       <Route path="/syllabus/view/:id" element={<PrivateRoute><SyllabusViewer /></PrivateRoute>} />
 
       <Route path="*" element={<NotFound />} />

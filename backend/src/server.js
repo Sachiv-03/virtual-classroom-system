@@ -76,6 +76,8 @@ app.use('/api/syllabus', require('./routes/syllabusRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/google-auth', require('./routes/googleAuthRoutes'));
+app.use('/api/focus', require('./routes/focusRoutes'));
+app.use('/api/messages', require('./routes/messageRoutes'));
 
 app.get('/', (req, res) => {
     res.send('API is running...');
@@ -86,7 +88,50 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
+// Setup Socket.IO
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+
+const io = new Server(server, {
+    cors: {
+        origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : true,
+        credentials: true
+    }
+});
+
+// Store active users: userId -> socketId
+const userSockets = new Map();
+
+io.on('connection', (socket) => {
+    console.log(`Socket connected: ${socket.id}`);
+
+    socket.on('register', (userId) => {
+        if (userId) userSockets.set(userId.toString(), socket.id);
+    });
+
+    socket.on('send_message', (data) => {
+        // data should have { receiverId, senderId, ...msg }
+        if (data.receiverId) {
+            const receiverSocketId = userSockets.get(data.receiverId.toString());
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit('receive_message', data);
+            }
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log(`Socket disconnected: ${socket.id}`);
+        for (let [userId, sId] of userSockets.entries()) {
+            if (sId === socket.id) {
+                userSockets.delete(userId);
+                break;
+            }
+        }
+    });
+});
+
+server.listen(PORT, () => {
     console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 
@@ -104,3 +149,4 @@ process.on('SIGTERM', () => {
         console.log('Process terminated');
     });
 });
+

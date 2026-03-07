@@ -78,6 +78,7 @@ app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/google-auth', require('./routes/googleAuthRoutes'));
 app.use('/api/focus', require('./routes/focusRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
+app.use('/api/groups', require('./routes/groupRoutes'));
 
 
 // Serve static upload folders for messages, syllabus, etc
@@ -128,24 +129,112 @@ const userSockets = new Map();
 io.on('connection', (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
-    socket.on('register', (userId) => {
+    socket.on('register', async (userId) => {
         if (userId) {
             userSockets.set(userId.toString(), socket.id);
             io.emit('online_users', Array.from(userSockets.keys()));
+
+            // Join rooms for all groups the user is in
+            try {
+                const Group = require('./models/Group');
+                const userGroups = await Group.find({ members: userId });
+                userGroups.forEach(group => {
+                    socket.join(`group_${group._id}`);
+                    console.log(`User ${userId} joined room group_${group._id}`);
+                });
+            } catch (err) {
+                console.error("Error joining group rooms:", err);
+            }
         }
     });
 
 
 
     socket.on('send_message', (data) => {
-        // Here data should contain { receiverId, messageText, senderId, ... }
-        if (data.receiverId) {
+        if (data.groupId) {
+            // Send to the entire group room
+            io.to(`group_${data.groupId}`).emit('receive_message', data);
+        } else if (data.receiverId) {
             const receiverSocketId = userSockets.get(data.receiverId.toString());
             if (receiverSocketId) {
-                // Emit to the specific user via their socket ID
                 io.to(receiverSocketId).emit('receive_message', data);
             }
         }
+    });
+
+    socket.on('message_delivered', async (data) => {
+        try {
+            const MessageModel = require('./models/Message');
+            await MessageModel.findByIdAndUpdate(data.messageId, { status: 'delivered' });
+            if (data.senderId) {
+                const senderSocketId = userSockets.get(data.senderId.toString());
+                if (senderSocketId) {
+                    io.to(senderSocketId).emit('message_status_update', { messageId: data.messageId, status: 'delivered' });
+                }
+            }
+        } catch (err) { }
+    });
+
+    socket.on('mark_seen', async (data) => {
+        try {
+            const MessageModel = require('./models/Message');
+            await MessageModel.updateMany(
+                { senderId: data.senderId, receiverId: data.receiverId, status: { $ne: 'seen' } },
+                { status: 'seen' }
+            );
+            if (data.senderId) {
+                const senderSocketId = userSockets.get(data.senderId.toString());
+                if (senderSocketId) {
+                    io.to(senderSocketId).emit('messages_seen_update', { viewerId: data.receiverId });
+                }
+            }
+        } catch (err) { }
+    });
+
+    socket.on('delete_message_event', (data) => {
+        // data: { messageId, receiverId, groupId }
+        if (data.groupId) {
+            io.to(`group_${data.groupId}`).emit('message_deleted_sync', { messageId: data.messageId });
+        } else if (data.receiverId) {
+            const receiverSocketId = userSockets.get(data.receiverId.toString());
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit('message_deleted_sync', { messageId: data.messageId });
+            }
+        }
+    });
+
+    socket.on('edit_message_event', (data) => {
+        // data: { messageId, receiverId, groupId, messageText }
+        if (data.groupId) {
+            io.to(`group_${data.groupId}`).emit('message_edited_sync', data);
+        } else if (data.receiverId) {
+            const receiverSocketId = userSockets.get(data.receiverId.toString());
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit('message_edited_sync', data);
+            }
+        }
+    });
+
+    socket.on('message_reaction_event', (data) => {
+        // data: { messageId, receiverId, groupId, reactions }
+        if (data.groupId) {
+            io.to(`group_${data.groupId}`).emit('message_reaction_sync', data);
+        } else if (data.receiverId) {
+            const receiverSocketId = userSockets.get(data.receiverId.toString());
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit('message_reaction_sync', data);
+            }
+        }
+    });
+
+    socket.on('join_group', (groupId) => {
+        socket.join(`group_${groupId}`);
+        console.log(`Socket ${socket.id} manually joined group_${groupId}`);
+    });
+
+    socket.on('leave_group', (groupId) => {
+        socket.leave(`group_${groupId}`);
+        console.log(`Socket ${socket.id} left group_${groupId}`);
     });
 
     socket.on('disconnect', () => {

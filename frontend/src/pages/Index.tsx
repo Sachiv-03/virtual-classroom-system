@@ -132,6 +132,7 @@ const Index = () => {
       return;
     }
     try {
+
       await createAnnouncement(announcementText);
       toast.success("Announcement sent successfully!");
       setAnnouncementOpen(false);

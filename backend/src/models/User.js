@@ -32,6 +32,22 @@ const userSchema = new mongoose.Schema({
     },
     otp: String,
     otpExpires: Date,
+    pinnedChatUsers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    profilePhoto: {
+        type: String,
+        default: null
+    },
+    about: {
+        type: String,
+        default: "Hey there! I am using Virtual Classroom."
+    },
+    phoneNumber: {
+        type: String,
+        default: null
+    }
 }, { timestamps: true });
 
 // Hash password before saving

@@ -1,29 +1,22 @@
 const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
-    sender: {
+    senderId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
         required: true
     },
-    receiver: {
+    receiverId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
         required: true
     },
-    content: {
+    messageText: {
         type: String,
         required: true
-    },
-    read: {
-        type: Boolean,
-        default: false
     }
 }, {
     timestamps: true
 });
-
-// Index to optimize querying conversations between two users
-messageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Message', messageSchema);

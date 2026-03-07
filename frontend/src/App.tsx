@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { SocketProvider } from "./context/SocketContext";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import Index from "./pages/Index";
 import Courses from "./pages/Courses";
@@ -17,7 +18,8 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 
 import Schedule from "./pages/Schedule";
-import Messages from "./pages/Messages";
+
+import MessagesPage from "./pages/MessagesPage";
 import Assignments from "./pages/Assignments";
 import Settings from "./pages/Settings";
 import AdminSyllabusUpload from "./pages/AdminSyllabusUpload";
@@ -44,7 +46,7 @@ const TeacherRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppContent = () => (
-  <BrowserRouter>
+  <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -58,7 +60,7 @@ const AppContent = () => (
       <Route path="/live/:courseId" element={<PrivateRoute><LiveClassroom /></PrivateRoute>} />
       <Route path="/attendance/:courseId" element={<PrivateRoute><AttendanceDashboard /></PrivateRoute>} />
       <Route path="/schedule" element={<PrivateRoute><Schedule /></PrivateRoute>} />
-      <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
+      <Route path="/messages" element={<PrivateRoute><MessagesPage /></PrivateRoute>} />
       <Route path="/assignments" element={<PrivateRoute><Assignments /></PrivateRoute>} />
       <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
 
@@ -78,7 +80,9 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <AppContent />
+          <SocketProvider>
+            <AppContent />
+          </SocketProvider>
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

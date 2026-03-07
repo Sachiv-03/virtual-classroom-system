@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { VideoGrid, Participant } from "@/components/classroom/live/VideoGrid";
-import { ChatPanel } from "@/components/classroom/live/ChatPanel";
+import { ClassroomChat } from "@/components/classroom/ClassroomChat";
 import { ParticipantsList } from "@/components/classroom/live/ParticipantsList";
 import { ControlBar } from "@/components/classroom/live/ControlBar";
 import { ArrowLeft, Maximize, Grid3X3, GraduationCap } from "lucide-react";
@@ -225,8 +225,17 @@ const LiveClassroom = () => {
         />
 
         {/* Side Panels */}
-        {isChatOpen && (
-          <ChatPanel className="w-80 flex-shrink-0" />
+        {isChatOpen && user && (
+          <div className="w-80 flex-shrink-0 border-l bg-card overflow-hidden">
+            <ClassroomChat
+              roomId={courseId || 'default'}
+              currentUser={{
+                id: user._id || user.id,
+                name: user.name,
+                role: user.role
+              }}
+            />
+          </div>
         )}
 
         {isParticipantsOpen && (

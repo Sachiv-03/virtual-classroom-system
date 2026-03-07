@@ -79,6 +79,10 @@ app.use('/api/google-auth', require('./routes/googleAuthRoutes'));
 app.use('/api/focus', require('./routes/focusRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 
+
+// Serve static upload folders for messages, syllabus, etc
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
 app.get('/', (req, res) => {
     res.send('API is running...');
 });
@@ -92,11 +96,29 @@ const PORT = process.env.PORT || 5000;
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const ClassroomMessage = require('./models/ClassroomMessage');
 
 const io = new Server(server, {
     cors: {
         origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : true,
         credentials: true
+    }
+});
+
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+        // Fallback for requests that don't need auth immediately or didn't supply it
+        // We can just proceed but leave socket.user undefined
+        return next();
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded;
+        next();
+    } catch (err) {
+        return next(new Error('Authentication error'));
     }
 });
 
@@ -107,14 +129,20 @@ io.on('connection', (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     socket.on('register', (userId) => {
-        if (userId) userSockets.set(userId.toString(), socket.id);
+        if (userId) {
+            userSockets.set(userId.toString(), socket.id);
+            io.emit('online_users', Array.from(userSockets.keys()));
+        }
     });
 
+
+
     socket.on('send_message', (data) => {
-        // data should have { receiverId, senderId, ...msg }
+        // Here data should contain { receiverId, messageText, senderId, ... }
         if (data.receiverId) {
             const receiverSocketId = userSockets.get(data.receiverId.toString());
             if (receiverSocketId) {
+                // Emit to the specific user via their socket ID
                 io.to(receiverSocketId).emit('receive_message', data);
             }
         }
@@ -125,8 +153,57 @@ io.on('connection', (socket) => {
         for (let [userId, sId] of userSockets.entries()) {
             if (sId === socket.id) {
                 userSockets.delete(userId);
+                io.emit('online_users', Array.from(userSockets.keys()));
                 break;
             }
+        }
+    });
+
+    // CLASSROOM GROUP CHAT EVENTS
+
+    socket.on('join_room', async ({ roomId }) => {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} joined room ${roomId}`);
+
+        try {
+            // Send last 50 messages from history
+            const messages = await ClassroomMessage.find({ roomId })
+                .sort({ createdAt: -1 })
+                .limit(50);
+
+            // Re-sort to chronological for client
+            socket.emit('message_history', messages.reverse());
+        } catch (error) {
+            console.error('Error fetching room history:', error);
+        }
+    });
+
+    socket.on('send_classroom_message', async ({ roomId, sender, text }) => {
+        // Verify JWT user ID matches sender ID for security if socket.user exists
+        if (socket.user && socket.user.id !== sender.id) {
+            console.log('Unauthorized sender:', sender.id);
+            return;
+        }
+
+        try {
+            // "check role === 'teacher' for announcements"
+            const isAnnouncement = sender.role === 'teacher' && text.startsWith('/announce ');
+            const actualText = isAnnouncement ? text.replace('/announce ', '') : text;
+
+            const newMessage = await ClassroomMessage.create({
+                roomId,
+                sender: {
+                    id: sender.id,
+                    name: sender.name,
+                    role: sender.role
+                },
+                text: actualText,
+                isAnnouncement
+            });
+
+            io.to(roomId).emit('receive_classroom_message', newMessage);
+        } catch (error) {
+            console.error('Error saving classroom msg:', error);
         }
     });
 });

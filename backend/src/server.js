@@ -237,6 +237,44 @@ io.on('connection', (socket) => {
         console.log(`Socket ${socket.id} left group_${groupId}`);
     });
 
+    // WebRTC Signaling Events
+    socket.on('call_user', (data) => {
+        // data: { to, from, signalData, type }
+        const receiverSocketId = userSockets.get(data.to);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('incoming_call', {
+                from: data.from,
+                name: data.fromName,
+                signalData: data.signalData,
+                type: data.type
+            });
+        }
+    });
+
+    socket.on('answer_call', (data) => {
+        // data: { to, signalData }
+        const callerSocketId = userSockets.get(data.to);
+        if (callerSocketId) {
+            io.to(callerSocketId).emit('call_accepted', data.signalData);
+        }
+    });
+
+    socket.on('ice_candidate', (data) => {
+        // data: { to, candidate }
+        const receiverSocketId = userSockets.get(data.to);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('ice_candidate', data.candidate);
+        }
+    });
+
+    socket.on('end_call', (data) => {
+        // data: { to }
+        const otherSocketId = userSockets.get(data.to);
+        if (otherSocketId) {
+            io.to(otherSocketId).emit('call_ended');
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log(`Socket disconnected: ${socket.id}`);
         for (let [userId, sId] of userSockets.entries()) {

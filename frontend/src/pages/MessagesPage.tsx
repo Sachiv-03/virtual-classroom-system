@@ -11,15 +11,19 @@ import {
     getChatUsers, getConversation, sendMessage, deleteMessage,
     reactToMessage, editMessage, toggleStarMessage, togglePinUser
 } from "@/services/messageService";
-import { getGroups, getGroupMessages, createGroup, Group } from "@/services/groupService";
+import { getGroups, getGroupMessages, createGroup, addGroupMembers, removeGroupMember, leaveGroup, Group } from "@/services/groupService";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
     Send, User as UserIcon, Clock, Paperclip, MoreVertical, Trash2, Check, CheckCheck,
     Smile, X, File as FileIcon, Image as ImageIcon, Reply, Edit2, Star, Forward, Search,
-    Pin, PinOff, MessageSquare, Mic, Square
+    Pin, PinOff, MessageSquare, Mic, Square, Plus, Trash, LogOut, Settings, Users,
+    MapPin, Gift, Search as SearchIcon, Phone, Video
 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { CallModal } from "@/components/messaging/CallModal";
 
 interface UserInfo {
     _id: string;
@@ -70,6 +74,24 @@ const MessagesPage = () => {
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
     const [newGroupName, setNewGroupName] = useState("");
     const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
+    const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+    const [isAddingMember, setIsAddingMember] = useState(false);
+    const [newMemberSelection, setNewMemberSelection] = useState<string[]>([]);
+    const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
+    const [gifSearchTerm, setGifSearchTerm] = useState("");
+    const [isSharingLocation, setIsSharingLocation] = useState(false);
+    const [callConfig, setCallConfig] = useState<{
+        isOpen: boolean;
+        type: 'voice' | 'video';
+        isIncoming: boolean;
+        remoteUser: UserInfo | null;
+        signalData?: any;
+    }>({
+        isOpen: false,
+        type: 'voice',
+        isIncoming: false,
+        remoteUser: null
+    });
 
     // Search states
     const [userSearchTerm, setUserSearchTerm] = useState("");
@@ -231,6 +253,17 @@ const MessagesPage = () => {
         socket.on("message_deleted_sync", handleDeletedSync);
         socket.on("message_edited_sync", handleEditedSync);
         socket.on("message_reaction_sync", handleReactionSync);
+
+        socket.on("incoming_call", (data: any) => {
+            // data: { from, name, signalData, type }
+            setCallConfig({
+                isOpen: true,
+                type: data.type,
+                isIncoming: true,
+                remoteUser: { _id: data.from, name: data.name, email: '', role: '' },
+                signalData: data.signalData
+            });
+        });
 
         return () => {
             socket.off("receive_message", handleReceiveMessage);
@@ -401,6 +434,119 @@ const MessagesPage = () => {
             socket?.emit("join_group", group._id);
         } catch (e) {
             toast.error("Failed to create group");
+        }
+    };
+
+    const handleLeaveGroup = async () => {
+        if (!selectedGroup) return;
+        try {
+            await leaveGroup(selectedGroup._id);
+            setUserGroups(prev => prev.filter(g => g._id !== selectedGroup._id));
+            setSelectedGroup(null);
+            setIsGroupInfoOpen(false);
+            toast.success("Left group successfully");
+            socket?.emit("leave_group", selectedGroup._id);
+        } catch (e) {
+            toast.error("Failed to leave group");
+        }
+    };
+
+    const handleAddMembersToGroup = async () => {
+        if (!selectedGroup || newMemberSelection.length === 0) return;
+        try {
+            const updated = await addGroupMembers(selectedGroup._id, newMemberSelection);
+            setUserGroups(prev => prev.map(g => g._id === selectedGroup._id ? updated : g));
+            setSelectedGroup(updated);
+            setIsAddingMember(false);
+            setNewMemberSelection([]);
+            toast.success("Members added!");
+
+            // Optionally notify them via socket if we had a per-user join notify
+        } catch (e) {
+            toast.error("Failed to add members");
+        }
+    };
+
+    const handleShareLocation = async () => {
+        if (!navigator.geolocation) {
+            toast.error("Geolocation is not supported by your browser");
+            return;
+        }
+
+        setIsSharingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                const locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                const locationText = `📍 My current location: ${locationUrl}`;
+
+                try {
+                    const result = await sendMessage(
+                        selectedUser?._id || "",
+                        locationText,
+                        null,
+                        'text',
+                        null,
+                        false,
+                        selectedGroup?._id
+                    );
+                    setMessages(prev => [...prev, result]);
+                    socket?.emit('send_message', result);
+                    toast.success("Location shared!");
+                } catch (e) {
+                    toast.error("Failed to share location");
+                } finally {
+                    setIsSharingLocation(false);
+                }
+            },
+            (error) => {
+                toast.error("Failed to get location: " + error.message);
+                setIsSharingLocation(false);
+            }
+        );
+    };
+
+    const handleSendGif = async (url: string) => {
+        try {
+            const result = await sendMessage(
+                selectedUser?._id || "",
+                "Sent a GIF",
+                null, // file handled differently or just send URL as text/meta
+                'text', // or 'gif'
+                null,
+                false,
+                selectedGroup?._id
+            );
+            // We can append the URL to the message text or use a separate field
+            // For now, let's just make the message text the URL
+            result.messageText = url;
+
+            setMessages(prev => [...prev, result]);
+            socket?.emit('send_message', result);
+            setIsGifPickerOpen(false);
+        } catch (e) {
+            toast.error("Failed to send GIF");
+        }
+    };
+
+    const handleInitiateCall = (type: 'voice' | 'video') => {
+        if (!selectedUser) return;
+        setCallConfig({
+            isOpen: true,
+            type,
+            isIncoming: false,
+            remoteUser: selectedUser
+        });
+    };
+    const handleRemoveFromGroup = async (userId: string) => {
+        if (!selectedGroup) return;
+        try {
+            const updated = await removeGroupMember(selectedGroup._id, userId);
+            setUserGroups(prev => prev.map(g => g._id === selectedGroup._id ? updated : g));
+            setSelectedGroup(updated);
+            toast.success("Member removed");
+        } catch (e) {
+            toast.error("Failed to remove member");
         }
     };
 
@@ -696,6 +842,16 @@ const MessagesPage = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-0.5">
+                                            {selectedUser && (
+                                                <div className="flex gap-1 mr-2 border-r pr-2 border-white/10">
+                                                    <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full text-emerald-500 hover:bg-emerald-500/10" onClick={() => handleInitiateCall('voice')}>
+                                                        <Phone className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full text-primary hover:bg-primary/10" onClick={() => handleInitiateCall('video')}>
+                                                        <Video className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                             {!selectedGroup && (
                                                 <Button
                                                     variant="ghost"
@@ -713,20 +869,178 @@ const MessagesPage = () => {
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full opacity-60"><MoreVertical className="h-4 w-4" /></Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-40">
-                                                    <DropdownMenuItem className="font-medium p-3">View Contact</DropdownMenuItem>
-                                                    <DropdownMenuItem className="font-medium p-3">Mute Notifications</DropdownMenuItem>
-                                                    <DropdownMenuItem className="font-medium p-3">Clear Chat</DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-destructive font-bold p-3">Block User</DropdownMenuItem>
+                                                <DropdownMenuContent align="end" className="w-48">
+                                                    {selectedGroup ? (
+                                                        <>
+                                                            <DropdownMenuItem className="font-medium p-3" onClick={() => setIsGroupInfoOpen(true)}>
+                                                                <Users className="w-4 h-4 mr-2" /> Group Info
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="text-destructive font-bold p-3" onClick={handleLeaveGroup}>
+                                                                <LogOut className="w-4 h-4 mr-2" /> Leave Group
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <DropdownMenuItem className="font-medium p-3">View Contact</DropdownMenuItem>
+                                                            <DropdownMenuItem className="font-medium p-3">Mute Notifications</DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="font-medium p-3">Clear Chat</DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive font-bold p-3">Block User</DropdownMenuItem>
+                                                        </>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
                                     </CardHeader>
 
+                                    {/* Group Info Sheet */}
+                                    <Sheet open={isGroupInfoOpen} onOpenChange={setIsGroupInfoOpen}>
+                                        <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+                                            <SheetHeader className="border-b pb-4 mb-4">
+                                                <SheetTitle className="text-2xl font-black">{selectedGroup?.name}</SheetTitle>
+                                                <SheetDescription>{selectedGroup?.description}</SheetDescription>
+                                            </SheetHeader>
+
+                                            <div className="space-y-6">
+                                                <div className="flex flex-col items-center py-4 bg-muted/30 rounded-2xl">
+                                                    <Avatar className="h-24 w-24 mb-4 ring-4 ring-background shadow-xl">
+                                                        <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${selectedGroup?.name}`} />
+                                                        <AvatarFallback>GP</AvatarFallback>
+                                                    </Avatar>
+                                                    <h3 className="text-xl font-bold">{selectedGroup?.name}</h3>
+                                                    <p className="text-sm text-muted-foreground">{selectedGroup?.members.length} participants</p>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="font-black text-xs uppercase tracking-widest text-muted-foreground">Participants</h4>
+                                                        {selectedGroup?.admins.includes(currentUser?.id || "") && (
+                                                            <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold" onClick={() => setIsAddingMember(true)}>
+                                                                <Plus className="w-3 h-3 mr-1" /> Add
+                                                            </Button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="space-y-3">
+                                                        {selectedGroup?.members.map(member => (
+                                                            <div key={member._id} className="flex items-center gap-3 p-2 rounded-xl border border-transparent hover:border-primary/5 hover:bg-primary/5 transition-all group/member">
+                                                                <Avatar className="h-10 w-10 ring-1 ring-primary/10">
+                                                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name.replace(/\s/g, '')}`} />
+                                                                    <AvatarFallback>{member.name[0]}</AvatarFallback>
+                                                                </Avatar>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <p className="font-bold text-sm truncate">{member.name}</p>
+                                                                        {selectedGroup.admins.includes(member._id) && (
+                                                                            <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Admin</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[10px] text-muted-foreground uppercase font-black truncate tracking-widest opacity-60">{member.role}</p>
+                                                                </div>
+                                                                {selectedGroup.admins.includes(currentUser?.id || "") && member._id !== currentUser?.id && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 text-destructive opacity-0 group-hover/member:opacity-100 transition-opacity"
+                                                                        onClick={() => handleRemoveFromGroup(member._id)}
+                                                                    >
+                                                                        <Trash className="w-4 h-4" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <Button variant="outline" className="w-full text-destructive hover:bg-destructive hover:text-white font-bold h-12 rounded-xl" onClick={handleLeaveGroup}>
+                                                    <LogOut className="w-4 h-4 mr-2" /> Leave Community
+                                                </Button>
+                                            </div>
+                                        </SheetContent>
+                                    </Sheet>
+
+                                    {/* Add Member Dialog */}
+                                    <Dialog open={isAddingMember} onOpenChange={setIsAddingMember}>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Add to Community</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="py-4 space-y-4">
+                                                <div className="max-h-60 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+                                                    {chatUsers
+                                                        .filter(u => !selectedGroup?.members.some(m => m._id === u._id))
+                                                        .map(user => (
+                                                            <div
+                                                                key={user._id}
+                                                                className={cn(
+                                                                    "flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all",
+                                                                    newMemberSelection.includes(user._id) ? "bg-primary text-primary-foreground shadow-lg" : "hover:bg-primary/5"
+                                                                )}
+                                                                onClick={() => {
+                                                                    setNewMemberSelection(prev =>
+                                                                        prev.includes(user._id) ? prev.filter(id => id !== user._id) : [...prev, user._id]
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <Avatar className="h-8 w-8">
+                                                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name.replace(/\s/g, '')}`} />
+                                                                    <AvatarFallback>{user.name[0]}</AvatarFallback>
+                                                                </Avatar>
+                                                                <span className="font-bold text-sm">{user.name}</span>
+                                                                {newMemberSelection.includes(user._id) && <Check className="h-4 w-4 ml-auto" />}
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <Button variant="ghost" className="font-bold" onClick={() => setIsAddingMember(false)}>Cancel</Button>
+                                                <Button className="font-bold" onClick={handleAddMembersToGroup} disabled={newMemberSelection.length === 0}>Add Participants</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    {/* GIF Picker Dialog */}
+                                    <Dialog open={isGifPickerOpen} onOpenChange={setIsGifPickerOpen}>
+                                        <DialogContent className="sm:max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>Send a GIF</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="py-4 space-y-4">
+                                                <div className="relative">
+                                                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                    <Input
+                                                        placeholder="Search Tenor..."
+                                                        className="pl-9"
+                                                        value={gifSearchTerm}
+                                                        onChange={(e) => setGifSearchTerm(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                                                    {/* Mock GIFs for demonstration if no API key */}
+                                                    {[
+                                                        "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndXpueXpueXpueXpueXpueXpueXpueXpueXpueXpueXpueHplJnB0PW0mY3Q9Zw/3o7TKMGpxoW3oM6ZSE/giphy.gif",
+                                                        "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndXpueXpueXpueXpueXpueXpueXpueXpueXpueXpueXpueHplJnB0PW0mY3Q9Zw/l0HlIDlD1VUCpS9dS/giphy.gif",
+                                                        "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndXpueXpueXpueXpueXpueXpueXpueXpueXpueXpueXpueHplJnB0PW0mY3Q9Zw/26AHONQ79FdWzhAI0/giphy.gif",
+                                                        "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJndXpueXpueXpueXpueXpueXpueXpueXpueXpueXpueXpueHplJnB0PW0mY3Q9Zw/xT9IgzoKnwFNmISR8I/giphy.gif"
+                                                    ].map((url, i) => (
+                                                        <img
+                                                            key={i}
+                                                            src={url}
+                                                            alt="gif"
+                                                            className="rounded-lg cursor-pointer hover:opacity-80 transition active:scale-95 border"
+                                                            onClick={() => handleSendGif(url)}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+
                                     {/* Message Search Bar */}
                                     {showMsgSearch && (
                                         <div className="px-5 py-2.5 bg-muted/40 border-b flex items-center animate-in slide-in-from-top duration-300 backdrop-blur-md">
-                                            <Search className="h-3.5 w-3.5 text-primary mr-3" />
+                                            <SearchIcon className="h-3.5 w-3.5 text-primary mr-3" />
                                             <input
                                                 autoFocus
                                                 placeholder="Search message..."
@@ -949,6 +1263,33 @@ const MessagesPage = () => {
                                             <Paperclip className="h-5 w-5" />
                                         </Button>
 
+                                        <div className="flex gap-1">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="rounded-full text-muted-foreground h-10 w-10 hover:bg-primary/10 transition-all"
+                                                onClick={() => setIsGifPickerOpen(true)}
+                                                disabled={isRecording}
+                                            >
+                                                <Gift className="h-5 w-5" />
+                                            </Button>
+
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className={cn(
+                                                    "rounded-full h-10 w-10 hover:bg-primary/10 transition-all",
+                                                    isSharingLocation ? "text-primary animate-pulse" : "text-muted-foreground"
+                                                )}
+                                                onClick={handleShareLocation}
+                                                disabled={isRecording || isSharingLocation}
+                                            >
+                                                <MapPin className="h-5 w-5" />
+                                            </Button>
+                                        </div>
+
                                         <div className="flex-1 flex gap-2 items-center">
                                             {isRecording ? (
                                                 <div className="flex-1 h-11 bg-red-50 dark:bg-red-950/20 rounded-xl flex items-center px-4 justify-between border border-red-200 dark:border-red-900/50">
@@ -1048,6 +1389,21 @@ const MessagesPage = () => {
                     background: rgba(var(--primary), 0.3);
                 }
             `}</style>
+
+            {callConfig.isOpen && (
+                <CallModal
+                    isOpen={callConfig.isOpen}
+                    onClose={() => setCallConfig(prev => ({ ...prev, isOpen: false }))}
+                    callerName={callConfig.remoteUser?.name}
+                    isIncoming={callConfig.isIncoming}
+                    type={callConfig.type}
+                    socket={socket}
+                    remoteUserId={callConfig.remoteUser?._id || ""}
+                    currentUserId={currentUser?.id || ""}
+                    currentUserName={currentUser?.name || ""}
+                    incomingSignal={callConfig.signalData}
+                />
+            )}
         </div>
     );
 };

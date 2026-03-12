@@ -29,6 +29,10 @@ const navItems = [
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
+const adminItems = [
+  { icon: BookOpen, label: "Syllabus Upload", path: "/admin/syllabus/upload" },
+];
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
@@ -58,7 +62,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
-        {navItems.map((item) => (
+        {[...navItems, ...(user?.role === 'admin' ? adminItems : [])].map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

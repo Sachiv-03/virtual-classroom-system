@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['student', 'teacher'],
+        enum: ['student', 'teacher', 'admin'],
         default: 'student',
     },
     otp: String,
@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    enrolledCourses: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Course'
+    }],
     about: {
         type: String,
         default: "Hey there! I am using Virtual Classroom."

@@ -31,8 +31,10 @@ interface Course {
   lessonsCount: number;
   enrolledStudents: number;
   rating: number;
+  price?: number;
   thumbnail: string;
   color?: keyof typeof colorVariants;
+  isEnrolled?: boolean;
 }
 
 const Courses = () => {
@@ -120,10 +122,10 @@ const Courses = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-3xl font-bold text-foreground">
-                {isTeacher ? "Courses You Teach" : "My Enrolled Courses"}
+                {isTeacher ? "Courses You Teach" : "Available & Enrolled Courses"}
               </h2>
               <p className="text-muted-foreground mt-1">
-                {isTeacher ? "Manage curriculum content and monitor student engagement." : "Access your enrolled courses and track your learning progress."}
+                {isTeacher ? "Manage curriculum content and monitor student engagement." : "Discover new custom courses or continue your learning journey."}
               </p>
             </div>
 
@@ -242,19 +244,33 @@ const Courses = () => {
                         <Button variant="outline" className="flex-1" onClick={() => toast.info("Viewing analytics...")}>Analytics</Button>
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Progress</span>
-                          <span className="font-medium text-foreground">{course.progress}%</span>
-                        </div>
-                        <Progress value={course.progress} className="h-2" />
-                        <Button
-                          className="w-full mt-4 group/btn"
-                          onClick={() => handleAction(course)}
-                        >
-                          {course.progress === 0 ? "Start Course" : "Continue Learning"}
-                          <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
-                        </Button>
+                      <div className="space-y-4">
+                        {course.isEnrolled ? (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Progress</span>
+                              <span className="font-medium text-foreground">{course.progress}%</span>
+                            </div>
+                            <Progress value={course.progress} className="h-2" />
+                            <Button
+                              className="w-full mt-2 group/btn"
+                              onClick={() => handleAction(course)}
+                            >
+                              {course.progress === 0 ? "Start Course" : "Continue Learning"}
+                              <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            className="w-full mt-2 group/btn bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 font-semibold"
+                            onClick={() => handleAction(course)}
+                          >
+                            <BookOpen className="h-4 w-4 mr-2" />
+                            {course.price === 0 ? "View Details (Free)" : "View Details / Purchase"}
+                            <ArrowRight className="h-4 w-4 ml-auto group-hover/btn:translate-x-1 transition-transform" />
+                          </Button>
+                        )}
                       </div>
                     )}
                   </CardContent>

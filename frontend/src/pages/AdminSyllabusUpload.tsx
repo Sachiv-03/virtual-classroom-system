@@ -1,16 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import api from '@/lib/api'; // Ensure you have an axios instance configured here
 
 const AdminSyllabusUpload = () => {
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [parsedData, setParsedData] = useState<any | null>(null);
+    const [courses, setCourses] = useState<any[]>([]);
+    const [selectedCourse, setSelectedCourse] = useState<string>('');
+    const [attaching, setAttaching] = useState(false);
     const { toast } = useToast();
+
+    useEffect(() => {
+        const fetchCourses = async () => {
+            try {
+                const res = await api.get('/courses');
+                // handle pagination wrapper if present
+                const data = Array.isArray(res.data) ? res.data : (res.data.data || []);
+                setCourses(data);
+            } catch (error) {
+                console.error("Failed to fetch courses:", error);
+            }
+        };
+        fetchCourses();
+    }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -53,6 +71,29 @@ const AdminSyllabusUpload = () => {
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAttach = async () => {
+        if (!selectedCourse || !parsedData) return;
+        setAttaching(true);
+        try {
+            await api.put(`/courses/${selectedCourse}/attach-syllabus`, { syllabusId: parsedData._id });
+            toast({
+                title: "Success",
+                description: "Syllabus successfully attached to the course!",
+            });
+            setParsedData(null); // Clear after success
+            setSelectedCourse('');
+            setFile(null);
+        } catch (error: any) {
+            toast({
+                title: "Attachment Failed",
+                description: error.response?.data?.message || "Something went wrong.",
+                variant: "destructive",
+            });
+        } finally {
+            setAttaching(false);
         }
     };
 
@@ -111,6 +152,36 @@ const AdminSyllabusUpload = () => {
                                 </ul>
                             </div>
 
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Attach to Course</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-muted-foreground">Select a course to attach this parsed syllabus data to. This will overwrite the course's current units.</p>
+                            <div className="flex gap-4">
+                                <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                                    <SelectTrigger className="w-[300px]">
+                                        <SelectValue placeholder="Select a course..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {courses.map(course => (
+                                            <SelectItem key={course._id} value={course._id}>
+                                                {course.title} {course.teacher ? `(${course.teacher})` : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button
+                                    onClick={handleAttach}
+                                    disabled={!selectedCourse || attaching}
+                                >
+                                    {attaching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Attach Syllabus
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>

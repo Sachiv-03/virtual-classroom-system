@@ -17,7 +17,8 @@ export const sendMessage = async (
     fileType?: string,
     replyTo?: string | null,
     isForwarded?: boolean,
-    groupId?: string
+    groupId?: string,
+    isEncrypted?: boolean
 ) => {
     if (file) {
         const formData = new FormData();
@@ -27,6 +28,7 @@ export const sendMessage = async (
         if (fileType) formData.append('fileType', fileType);
         if (replyTo) formData.append('replyTo', replyTo);
         if (isForwarded) formData.append('isForwarded', String(isForwarded));
+        if (isEncrypted) formData.append('isEncrypted', String(isEncrypted));
         formData.append('file', file);
 
         const response = await api.post('/messages/send', formData, {
@@ -39,7 +41,8 @@ export const sendMessage = async (
             groupId,
             messageText,
             replyTo,
-            isForwarded
+            isForwarded,
+            isEncrypted
         });
         return response.data;
     }

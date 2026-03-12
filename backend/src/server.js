@@ -79,7 +79,8 @@ app.use('/api/google-auth', require('./routes/googleAuthRoutes'));
 app.use('/api/focus', require('./routes/focusRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/groups', require('./routes/groupRoutes'));
-
+app.use('/api/status', require('./routes/statusRoutes'));
+app.use('/api/payment', require('./routes/paymentRoutes'));
 
 // Serve static upload folders for messages, syllabus, etc
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));

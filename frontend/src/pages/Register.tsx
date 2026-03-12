@@ -119,6 +119,7 @@ const Register = () => {
                             <SelectContent>
                                 <SelectItem value="student">Student</SelectItem>
                                 <SelectItem value="teacher">Teacher</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -177,8 +178,8 @@ const Register = () => {
                         Sign in
                     </Link>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

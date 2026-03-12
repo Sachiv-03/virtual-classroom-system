@@ -16,3 +16,24 @@ export const addClassSchedule = async (courseId: string, data: any) => {
     const response = await api.post(`/courses/${courseId}/schedule`, data);
     return response.data;
 };
+
+// Syllabus Builder API Methods
+export const addCourseUnit = async (courseId: string, title: string) => {
+    const response = await api.post(`/courses/${courseId}/units`, { title });
+    return response.data;
+};
+
+export const updateCourseUnit = async (courseId: string, unitId: string, title: string) => {
+    const response = await api.put(`/courses/${courseId}/units/${unitId}`, { title });
+    return response.data;
+};
+
+export const deleteCourseUnit = async (courseId: string, unitId: string) => {
+    const response = await api.delete(`/courses/${courseId}/units/${unitId}`);
+    return response.data;
+};
+
+export const addCourseTopic = async (courseId: string, unitId: string, topicData: { title: string, duration?: string, videoUrl?: string }) => {
+    const response = await api.post(`/courses/${courseId}/units/${unitId}/topics`, topicData);
+    return response.data;
+};

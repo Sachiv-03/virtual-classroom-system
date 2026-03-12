@@ -45,6 +45,16 @@ const TeacherRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { token, user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  if (!token) return <Navigate to="/login" />;
+  if (user?.role !== 'admin') return <Navigate to="/" />;
+
+  return <>{children}</>;
+};
+
 const AppContent = () => (
   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
     <Routes>
@@ -65,7 +75,7 @@ const AppContent = () => (
       <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
 
       {/* New Syllabus Routes */}
-      <Route path="/admin/syllabus/upload" element={<TeacherRoute><AdminSyllabusUpload /></TeacherRoute>} />
+      <Route path="/admin/syllabus/upload" element={<AdminRoute><AdminSyllabusUpload /></AdminRoute>} />
       <Route path="/syllabus/view/:id" element={<PrivateRoute><SyllabusViewer /></PrivateRoute>} />
 
       <Route path="*" element={<NotFound />} />

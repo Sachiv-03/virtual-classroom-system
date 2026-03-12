@@ -138,11 +138,11 @@ const Schedule = () => {
             <main className="ml-64 transition-all duration-300">
                 <Header />
 
-                <div className="p-6 space-y-6 animate-fade-in">
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 className="text-3xl font-bold tracking-tight">Academic Schedule</h2>
-                            <p className="text-muted-foreground">Manage your classes and track your attendance</p>
+                <div className="p-8 space-y-8 animate-fade-in bg-slate-50/30 dark:bg-slate-950/30 min-h-[calc(100vh-4rem)]">
+                    <div className="flex justify-between items-center mb-10">
+                        <div className="space-y-1">
+                            <h2 className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-white/60">Academic Schedule</h2>
+                            <p className="text-muted-foreground font-medium">Manage your classes and track your attendance in real-time</p>
                         </div>
                         {user?.role === 'teacher' && (
                             <Dialog open={isAddClassOpen} onOpenChange={setIsAddClassOpen}>
@@ -227,22 +227,22 @@ const Schedule = () => {
                         </TabsList>
 
                         <TabsContent value="calendar" className="animate-slide-up">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <Card className="col-span-1">
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                                <Card className="col-span-1 border-none shadow-xl bg-card/50 backdrop-blur-xl">
                                     <CardHeader>
                                         <CardTitle>Calendar</CardTitle>
                                     </CardHeader>
-                                    <CardContent>
+                                    <CardContent className="flex justify-center p-4">
                                         <Calendar
                                             mode="single"
                                             selected={date}
                                             onSelect={setDate}
-                                            className="rounded-md border shadow w-full"
+                                            className="rounded-xl border shadow-2xl bg-background"
                                         />
                                     </CardContent>
                                 </Card>
 
-                                <Card className="col-span-1 lg:col-span-2">
+                                <Card className="col-span-1 xl:col-span-2 border-none shadow-xl bg-card/50 backdrop-blur-xl">
                                     <CardHeader>
                                         <CardTitle className="flex justify-between items-center">
                                             <span>Classes for {dayName}</span>
@@ -261,17 +261,17 @@ const Schedule = () => {
                                                     return (
                                                         <div
                                                             key={i}
-                                                            className="flex items-center justify-between p-4 border rounded-lg bg-card/50 hover:bg-accent/50 transition-all cursor-pointer group"
+                                                            className="flex items-center justify-between p-5 border-none rounded-2xl bg-background/40 hover:bg-background/60 backdrop-blur-md shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group ring-1 ring-white/10"
                                                             onClick={() => navigate(`/live/${item.courseId || 'default'}`)}
                                                         >
-                                                            <div className="flex gap-4">
-                                                                <div className="font-mono text-primary font-bold w-20 flex items-center gap-2">
+                                                            <div className="flex gap-5">
+                                                                <div className="font-mono text-primary font-black w-24 flex items-center gap-2 bg-primary/10 rounded-xl px-3 h-10">
                                                                     <Clock className="h-4 w-4" />
                                                                     {item.startTime}
                                                                 </div>
                                                                 <div>
-                                                                    <h4 className="font-bold group-hover:text-primary transition-colors">{item.subject}</h4>
-                                                                    <p className="text-sm text-muted-foreground">{item.room} • {item.teacher}</p>
+                                                                    <h4 className="font-black text-lg group-hover:text-primary transition-colors tracking-tight">{item.subject}</h4>
+                                                                    <p className="text-sm text-muted-foreground font-medium">{item.room} • {item.teacher}</p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-3">

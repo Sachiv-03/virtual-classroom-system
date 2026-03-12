@@ -38,7 +38,7 @@ exports.getConversation = asyncHandler(async (req, res, next) => {
 // @route   POST /api/messages/send
 // @access  Private
 exports.sendMessage = asyncHandler(async (req, res, next) => {
-    const { receiverId, groupId, messageText, fileType, replyTo, isForwarded } = req.body;
+    const { receiverId, groupId, messageText, fileType, replyTo, isForwarded, isEncrypted } = req.body;
     const senderId = req.user.id;
 
     let fileUrl = null;
@@ -60,10 +60,11 @@ exports.sendMessage = asyncHandler(async (req, res, next) => {
         messageText: messageText || "",
         fileUrl,
         fileName,
-        fileType: fileType || 'none',
+        fileType: fileType || (fileUrl ? (req.file.mimetype.startsWith('image') ? 'image' : (req.file.mimetype.startsWith('video') ? 'video' : 'document')) : 'none'),
         status: 'sent',
-        replyTo: replyTo || null,
-        isForwarded: isForwarded || false
+        replyTo: replyTo || undefined,
+        isForwarded: isForwarded === 'true' || isForwarded === true,
+        isEncrypted: isEncrypted === 'true' || isEncrypted === true
     });
 
     // If it's a group message, update group's last message

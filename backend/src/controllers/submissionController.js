@@ -1,5 +1,6 @@
 const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
+const User = require('../models/User');
 const path = require('path');
 const fs = require('fs');
 const asyncHandler = require('../utils/asyncHandler');
@@ -57,6 +58,30 @@ exports.submitAssignment = asyncHandler(async (req, res, next) => {
             fileName: req.file.originalname,
             isLate: isLate
         });
+
+        // --- Gamification: Award +50 XP for first-time submission ---
+        try {
+            const user = await User.findById(req.user.id);
+            if (user) {
+                user.xp = (user.xp || 0) + 50;
+                user.level = Math.floor(user.xp / 100) + 1;
+
+                // Badge: First submission ever
+                const totalSubmissions = await Submission.countDocuments({ studentId: req.user.id });
+                const hasFirstBadge = user.badges && user.badges.some(b => b.name === 'First Submission');
+                if (!hasFirstBadge) {
+                    user.badges.push({ name: 'First Submission', icon: '📝', earnedAt: new Date() });
+                }
+                // Badge: Assignment Ace (10 submissions)
+                const hasAceBadge = user.badges && user.badges.some(b => b.name === 'Assignment Ace');
+                if (totalSubmissions >= 10 && !hasAceBadge) {
+                    user.badges.push({ name: 'Assignment Ace', icon: '🏆', earnedAt: new Date() });
+                }
+                await user.save();
+            }
+        } catch (xpErr) {
+            console.error('XP update failed (non-critical):', xpErr.message);
+        }
     }
 
     res.status(201).json({

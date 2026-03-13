@@ -16,12 +16,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Trophy,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: BookOpen, label: "My Courses", path: "/courses" },
+  { icon: Database, label: "University Syllabus", path: "/university-syllabus" },
   { icon: Trophy, label: "Achievements", path: "/achievements" },
   { icon: Calendar, label: "Schedule", path: "/schedule" },
   { icon: MessageSquare, label: "Messages", path: "/messages" },

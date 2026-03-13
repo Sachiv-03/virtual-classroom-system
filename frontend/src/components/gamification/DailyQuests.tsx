@@ -13,50 +13,14 @@ interface Quest {
   expiresIn?: string;
 }
 
-const dailyQuests: Quest[] = [
-  {
-    id: "1",
-    title: "Attend 2 Live Classes",
-    description: "Join live sessions today",
-    xpReward: 100,
-    progress: 1,
-    total: 2,
-    completed: false,
-  },
-  {
-    id: "2",
-    title: "Complete 3 Assignments",
-    description: "Submit your homework",
-    xpReward: 150,
-    progress: 3,
-    total: 3,
-    completed: true,
-  },
-  {
-    id: "3",
-    title: "Study for 1 Hour",
-    description: "Use the focus timer",
-    xpReward: 75,
-    progress: 45,
-    total: 60,
-    completed: false,
-    expiresIn: "4h left",
-  },
-  {
-    id: "4",
-    title: "Score 80%+ on Quiz",
-    description: "Take any course quiz",
-    xpReward: 200,
-    progress: 0,
-    total: 1,
-    completed: false,
-  },
-];
+interface DailyQuestsProps {
+  quests?: Quest[];
+}
 
-export function DailyQuests() {
-  const completedCount = dailyQuests.filter(q => q.completed).length;
-  const totalXP = dailyQuests.reduce((sum, q) => sum + (q.completed ? q.xpReward : 0), 0);
-  const potentialXP = dailyQuests.reduce((sum, q) => sum + q.xpReward, 0);
+export function DailyQuests({ quests = [] }: DailyQuestsProps) {
+  const completedCount = quests.filter(q => q.completed).length;
+  const totalXP = quests.reduce((sum, q) => sum + (q.completed ? q.xpReward : 0), 0);
+  const potentialXP = quests.reduce((sum, q) => sum + q.xpReward, 0);
 
   return (
     <div className="rounded-2xl bg-card border border-border overflow-hidden">
@@ -82,15 +46,15 @@ export function DailyQuests() {
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Daily Progress</span>
-            <span className="font-medium">{completedCount}/{dailyQuests.length}</span>
+            <span className="font-medium">{completedCount}/{quests.length}</span>
           </div>
-          <Progress value={(completedCount / dailyQuests.length) * 100} className="h-2" />
+          <Progress value={(completedCount / quests.length) * 100} className="h-2" />
         </div>
       </div>
 
       {/* Quest List */}
       <div className="divide-y divide-border">
-        {dailyQuests.map((quest) => (
+        {quests.map((quest) => (
           <div
             key={quest.id}
             className={cn(
@@ -168,7 +132,7 @@ export function DailyQuests() {
           </div>
           <div className={cn(
             "px-3 py-1.5 rounded-full font-bold text-sm",
-            completedCount === dailyQuests.length
+            completedCount === quests.length
               ? "bg-warning text-warning-foreground animate-pulse"
               : "bg-muted text-muted-foreground"
           )}>

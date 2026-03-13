@@ -1,5 +1,6 @@
 const Attendance = require('../models/Attendance');
 const Course = require('../models/Course');
+const User = require('../models/User');
 const PDFDocument = require('pdfkit');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
@@ -35,6 +36,26 @@ exports.markAttendance = asyncHandler(async (req, res, next) => {
         status: 'Present',
         checkInTime: new Date()
     });
+
+    // --- Gamification: Award +10 XP for attending class ---
+    try {
+        const user = await User.findById(studentId);
+        if (user) {
+            user.xp = (user.xp || 0) + 10;
+            // Auto-level: 1 level per 100 XP
+            user.level = Math.floor(user.xp / 100) + 1;
+
+            // Award badge at 30 attendances
+            const totalAttended = await Attendance.countDocuments({ student: studentId, status: 'Present' });
+            const hasBadge = user.badges && user.badges.some(b => b.name === 'Perfect Attendance');
+            if (totalAttended >= 30 && !hasBadge) {
+                user.badges.push({ name: 'Perfect Attendance', icon: '🎯', earnedAt: new Date() });
+            }
+            await user.save();
+        }
+    } catch (xpErr) {
+        console.error('XP update failed (non-critical):', xpErr.message);
+    }
 
     res.status(201).json({
         success: true,
@@ -173,6 +194,46 @@ exports.updateAttendance = asyncHandler(async (req, res, next) => {
 
     attendance.status = status || attendance.status;
     await attendance.save();
+
+    res.json({
+        success: true,
+        data: attendance
+    });
+});
+
+// @desc    Checkout and record duration, mark Absent if leaving early
+// @route   PUT /api/attendance/leave
+// @access  Private
+exports.leaveClass = asyncHandler(async (req, res, next) => {
+    const { courseId } = req.body;
+    const studentId = req.user.id;
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    let attendance = await Attendance.findOne({
+        student: studentId,
+        course: courseId,
+        date: { $gte: startOfDay }
+    }).sort({ checkInTime: -1 });
+
+    if (!attendance) {
+        return next(new ErrorResponse('Attendance record not found to checkout', 404));
+    }
+
+    // Only configure if not already checked out
+    if (!attendance.checkoutTime) {
+        attendance.checkoutTime = new Date();
+        const diffMs = attendance.checkoutTime - attendance.checkInTime;
+        attendance.duration = Math.floor(diffMs / 60000); // Minutes
+        
+        // Mark Absent if leaving before minimum required duration (e.g. 30 mins)
+        // Here we just mark Absent if duration < 30 minutes, since they left "inbetween"
+        if(attendance.duration < 30) {
+            attendance.status = 'Absent';
+        }
+        await attendance.save();
+    }
 
     res.json({
         success: true,

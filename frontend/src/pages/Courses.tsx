@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { enrollInCourse } from "@/services/courseService";
 
 const colorVariants = {
   blue: "from-primary/80 to-primary",
@@ -44,6 +45,7 @@ const Courses = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
@@ -91,10 +93,39 @@ const Courses = () => {
 
   const handleAction = (course: Course) => {
     if (isTeacher) {
-      // toast.success(`Managing ${course.title}...`);
+      navigate(`/courses/${course._id}`);
+    } else if (course.isEnrolled) {
       navigate(`/courses/${course._id}`);
     } else {
+      // Not enrolled yet — navigate to the course detail page
       navigate(`/courses/${course._id}`);
+    }
+  };
+
+  const handleEnroll = async (course: Course, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEnrollingId(course._id);
+    try {
+      const result = await enrollInCourse(course._id);
+      if (result.alreadyEnrolled) {
+        toast.info('You are already enrolled in this course');
+      } else {
+        toast.success(`Enrolled in "${course.title}" successfully!`);
+      }
+      // Refresh courses to update enrollment status
+      const response = await api.get('/courses');
+      const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
+      const data = rawData.map((c: any, index: number) => ({
+        ...c,
+        color: Object.keys(colorVariants)[index % 4],
+        progress: Math.floor(Math.random() * 100)
+      }));
+      setCourses(data);
+      setFilteredCourses(data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to enroll');
+    } finally {
+      setEnrollingId(null);
     }
   };
 
@@ -125,7 +156,7 @@ const Courses = () => {
                 {isTeacher ? "Courses You Teach" : "Available & Enrolled Courses"}
               </h2>
               <p className="text-muted-foreground mt-1">
-                {isTeacher ? "Manage curriculum content and monitor student engagement." : "Discover new custom courses or continue your learning journey."}
+                {isTeacher ? "Manage your courses and student content" : "Browse all available courses and manage your enrollments"}
               </p>
             </div>
 
@@ -262,12 +293,12 @@ const Courses = () => {
                           </>
                         ) : (
                           <Button
-                            variant="secondary"
-                            className="w-full mt-2 group/btn bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 font-semibold"
-                            onClick={() => handleAction(course)}
+                            className="w-full mt-2 group/btn bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                            disabled={enrollingId === course._id}
+                            onClick={(e) => handleEnroll(course, e)}
                           >
                             <BookOpen className="h-4 w-4 mr-2" />
-                            {course.price === 0 ? "View Details (Free)" : "View Details / Purchase"}
+                            {enrollingId === course._id ? 'Enrolling...' : (course.price === 0 ? 'Enroll for Free' : 'View Details / Purchase')}
                             <ArrowRight className="h-4 w-4 ml-auto group-hover/btn:translate-x-1 transition-transform" />
                           </Button>
                         )}

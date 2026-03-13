@@ -11,5 +11,6 @@ router.get('/all', protect, attendanceController.getAllAttendance);
 router.put('/update', protect, attendanceController.updateAttendance);
 router.get('/analytics/:courseId', protect, validateCourseIdParam, attendanceController.getAnalytics);
 router.get('/report/:courseId', protect, validateCourseIdParam, attendanceController.generateReport);
+router.put('/leave', protect, attendanceController.leaveClass);
 
 module.exports = router;

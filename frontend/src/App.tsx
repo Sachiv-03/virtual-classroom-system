@@ -25,6 +25,8 @@ import Settings from "./pages/Settings";
 import AdminSyllabusUpload from "./pages/AdminSyllabusUpload";
 import SyllabusViewer from "./pages/SyllabusViewer";
 import AttendanceDashboard from "./pages/AttendanceDashboard";
+import UniversitySyllabusPage from "./pages/UniversitySyllabusPage";
+import SyllabusPage from "./pages/SyllabusPage";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +79,8 @@ const AppContent = () => (
       {/* New Syllabus Routes */}
       <Route path="/admin/syllabus/upload" element={<AdminRoute><AdminSyllabusUpload /></AdminRoute>} />
       <Route path="/syllabus/view/:id" element={<PrivateRoute><SyllabusViewer /></PrivateRoute>} />
+      <Route path="/university-syllabus" element={<PrivateRoute><UniversitySyllabusPage /></PrivateRoute>} />
+      <Route path="/old-syllabus" element={<PrivateRoute><SyllabusPage /></PrivateRoute>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>

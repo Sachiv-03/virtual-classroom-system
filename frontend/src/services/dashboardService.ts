@@ -9,3 +9,8 @@ export const getStudentDashboardStats = async () => {
     const response = await api.get('/dashboard/student');
     return response.data;
 };
+
+export const getLeaderboard = async () => {
+    const response = await api.get('/dashboard/leaderboard');
+    return response.data;
+};

@@ -14,16 +14,10 @@ interface LeaderboardEntry {
   trendValue?: number;
   isCurrentUser?: boolean;
 }
-
-const leaderboardData: LeaderboardEntry[] = [
-  { rank: 1, name: "Sarah Chen", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah", initials: "SC", xp: 4250, level: 15, trend: "same" },
-  { rank: 2, name: "Alex Rivera", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=alex", initials: "AR", xp: 3980, level: 14, trend: "up", trendValue: 2 },
-  { rank: 3, name: "John Smith", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=student", initials: "JS", xp: 3650, level: 12, trend: "up", trendValue: 1, isCurrentUser: true },
-  { rank: 4, name: "Emily Wong", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=emily", initials: "EW", xp: 3420, level: 12, trend: "down", trendValue: 1 },
-  { rank: 5, name: "Mike Johnson", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=mike", initials: "MJ", xp: 3180, level: 11, trend: "up", trendValue: 3 },
-  { rank: 6, name: "Lisa Park", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=lisa", initials: "LP", xp: 2950, level: 10, trend: "same" },
-  { rank: 7, name: "David Kim", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=david", initials: "DK", xp: 2780, level: 10, trend: "down", trendValue: 2 },
-];
+interface LeaderboardProps {
+  data?: LeaderboardEntry[];
+  loading?: boolean;
+}
 
 const getRankIcon = (rank: number) => {
   switch (rank) {
@@ -58,7 +52,18 @@ const getTrendIcon = (trend: "up" | "down" | "same", value?: number) => {
   return <Minus className="h-3 w-3 text-muted-foreground" />;
 };
 
-export function Leaderboard() {
+export function Leaderboard({ data = [], loading = false }: LeaderboardProps) {
+  const displayData = data.length > 0 ? data : [];
+
+  if (loading && displayData.length === 0) {
+    return (
+      <div className="p-8 text-center bg-card border rounded-xl animate-pulse">
+        <Crown className="h-8 w-8 text-muted mx-auto mb-2" />
+        <p className="text-muted-foreground">Loading ranks...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl bg-card border border-border overflow-hidden">
       {/* Header */}
@@ -70,62 +75,64 @@ export function Leaderboard() {
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Leaderboard</h3>
-              <p className="text-xs text-muted-foreground">This week's top students</p>
+              <p className="text-xs text-muted-foreground">The community's top students</p>
             </div>
           </div>
           <div className="text-xs text-muted-foreground">
-            Updates in 2h
+            Live Updates
           </div>
         </div>
       </div>
 
-      {/* Top 3 Podium */}
-      <div className="p-4 flex justify-center items-end gap-2 bg-gradient-to-b from-primary/5 to-transparent">
-        {/* 2nd Place */}
-        <div className="flex flex-col items-center">
-          <Avatar className="h-12 w-12 ring-2 ring-slate-400">
-            <AvatarImage src={leaderboardData[1].avatar} />
-            <AvatarFallback>{leaderboardData[1].initials}</AvatarFallback>
-          </Avatar>
-          <div className="mt-1 w-16 h-12 bg-slate-200 dark:bg-slate-700 rounded-t-lg flex flex-col items-center justify-center">
-            <Medal className="h-4 w-4 text-slate-400" />
-            <span className="text-xs font-bold">2nd</span>
-          </div>
-        </div>
-
-        {/* 1st Place */}
-        <div className="flex flex-col items-center -mt-4">
-          <div className="relative">
-            <Avatar className="h-16 w-16 ring-2 ring-warning animate-glow-pulse">
-              <AvatarImage src={leaderboardData[0].avatar} />
-              <AvatarFallback>{leaderboardData[0].initials}</AvatarFallback>
+      {/* Top 3 Podium (Only show if we have enough data) */}
+      {displayData.length >= 3 && (
+        <div className="p-4 flex justify-center items-end gap-2 bg-gradient-to-b from-primary/5 to-transparent">
+          {/* 2nd Place */}
+          <div className="flex flex-col items-center">
+            <Avatar className="h-12 w-12 ring-2 ring-slate-400">
+              <AvatarImage src={displayData[1].avatar} />
+              <AvatarFallback>{displayData[1].initials}</AvatarFallback>
             </Avatar>
-            <Crown className="absolute -top-3 left-1/2 -translate-x-1/2 h-6 w-6 text-warning fill-warning" />
+            <div className="mt-1 w-16 h-12 bg-slate-200 dark:bg-slate-700 rounded-t-lg flex flex-col items-center justify-center">
+              <Medal className="h-4 w-4 text-slate-400" />
+              <span className="text-xs font-bold">2nd</span>
+            </div>
           </div>
-          <div className="mt-1 w-16 h-16 bg-gradient-to-b from-warning/30 to-warning/10 rounded-t-lg flex flex-col items-center justify-center">
-            <span className="text-lg font-bold text-warning">1st</span>
-          </div>
-        </div>
 
-        {/* 3rd Place */}
-        <div className="flex flex-col items-center">
-          <Avatar className={cn(
-            "h-12 w-12 ring-2 ring-amber-600",
-            leaderboardData[2].isCurrentUser && "ring-primary ring-offset-2"
-          )}>
-            <AvatarImage src={leaderboardData[2].avatar} />
-            <AvatarFallback>{leaderboardData[2].initials}</AvatarFallback>
-          </Avatar>
-          <div className="mt-1 w-16 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-t-lg flex flex-col items-center justify-center">
-            <Medal className="h-4 w-4 text-amber-600" />
-            <span className="text-xs font-bold">3rd</span>
+          {/* 1st Place */}
+          <div className="flex flex-col items-center -mt-4">
+            <div className="relative">
+              <Avatar className="h-16 w-16 ring-2 ring-warning animate-glow-pulse">
+                <AvatarImage src={displayData[0].avatar} />
+                <AvatarFallback>{displayData[0].initials}</AvatarFallback>
+              </Avatar>
+              <Crown className="absolute -top-3 left-1/2 -translate-x-1/2 h-6 w-6 text-warning fill-warning" />
+            </div>
+            <div className="mt-1 w-16 h-16 bg-gradient-to-b from-warning/30 to-warning/10 rounded-t-lg flex flex-col items-center justify-center">
+              <span className="text-lg font-bold text-warning">1st</span>
+            </div>
+          </div>
+
+          {/* 3rd Place */}
+          <div className="flex flex-col items-center">
+            <Avatar className={cn(
+              "h-12 w-12 ring-2 ring-amber-600",
+              displayData[2].isCurrentUser && "ring-primary ring-offset-2"
+            )}>
+              <AvatarImage src={displayData[2].avatar} />
+              <AvatarFallback>{displayData[2].initials}</AvatarFallback>
+            </Avatar>
+            <div className="mt-1 w-16 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-t-lg flex flex-col items-center justify-center">
+              <Medal className="h-4 w-4 text-amber-600" />
+              <span className="text-xs font-bold">3rd</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* List */}
       <div className="divide-y divide-border">
-        {leaderboardData.map((entry) => (
+        {displayData.map((entry) => (
           <div
             key={entry.rank}
             className={cn(

@@ -44,6 +44,14 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Course'
     }],
+    department: {
+        type: String,
+        default: null
+    },
+    rollNumber: {
+        type: String,
+        default: null
+    },
     about: {
         type: String,
         default: "Hey there! I am using Virtual Classroom."
@@ -51,7 +59,29 @@ const userSchema = new mongoose.Schema({
     phoneNumber: {
         type: String,
         default: null
-    }
+    },
+    xp: {
+        type: Number,
+        default: 0
+    },
+    level: {
+        type: Number,
+        default: 1
+    },
+    badges: [{
+        name: { type: String },
+        icon: { type: String },
+        earnedAt: { type: Date, default: Date.now }
+    }],
+    streak: {
+        type: Number,
+        default: 0
+    },
+    lastLoginDate: {
+        type: Date,
+        default: Date.now
+    },
+    loginHistory: [Date]
 }, { timestamps: true });
 
 // Hash password before saving

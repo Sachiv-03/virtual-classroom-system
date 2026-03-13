@@ -22,7 +22,11 @@ connectDB();
 const app = express();
 
 // Security Headers
-app.use(helmet());
+app.use(helmet({
+    crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false
+}));
 
 // Logging
 if (process.env.NODE_ENV === 'development') {
@@ -108,6 +112,8 @@ const io = new Server(server, {
     }
 });
 
+
+
 io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) {
@@ -146,6 +152,8 @@ io.on('connection', (socket) => {
             } catch (err) {
                 console.error("Error joining group rooms:", err);
             }
+
+
         }
     });
 
@@ -290,31 +298,43 @@ io.on('connection', (socket) => {
     // CLASSROOM GROUP CHAT EVENTS
 
     socket.on('join_room', async ({ roomId }) => {
+        if (!roomId) return;
         socket.join(roomId);
         console.log(`Socket ${socket.id} joined room ${roomId}`);
 
+        // Broadcast updated participant count to everyone in the room
+        const roomSockets = await io.in(roomId).allSockets();
+        io.to(roomId).emit('room_participant_count', roomSockets.size);
+
         try {
-            // Send last 50 messages from history
+            // Send last 50 messages from history to the joining socket
             const messages = await ClassroomMessage.find({ roomId })
                 .sort({ createdAt: -1 })
                 .limit(50);
-
-            // Re-sort to chronological for client
             socket.emit('message_history', messages.reverse());
         } catch (error) {
             console.error('Error fetching room history:', error);
         }
     });
 
+    socket.on('leave_room', async ({ roomId }) => {
+        if (!roomId) return;
+        socket.leave(roomId);
+        console.log(`Socket ${socket.id} left room ${roomId}`);
+        // Broadcast updated count after leave
+        const roomSockets = await io.in(roomId).allSockets();
+        io.to(roomId).emit('room_participant_count', roomSockets.size);
+    });
+
     socket.on('send_classroom_message', async ({ roomId, sender, text }) => {
-        // Verify JWT user ID matches sender ID for security if socket.user exists
+        // Guard: roomId must be present and sender must match authenticated socket user
+        if (!roomId) return;
         if (socket.user && socket.user.id !== sender.id) {
             console.log('Unauthorized sender:', sender.id);
             return;
         }
 
         try {
-            // "check role === 'teacher' for announcements"
             const isAnnouncement = sender.role === 'teacher' && text.startsWith('/announce ');
             const actualText = isAnnouncement ? text.replace('/announce ', '') : text;
 
@@ -329,6 +349,7 @@ io.on('connection', (socket) => {
                 isAnnouncement
             });
 
+            // Strictly emit only to the specific roomId (courseId)
             io.to(roomId).emit('receive_classroom_message', newMessage);
         } catch (error) {
             console.error('Error saving classroom msg:', error);

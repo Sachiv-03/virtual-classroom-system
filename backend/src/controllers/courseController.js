@@ -1,6 +1,7 @@
 const Course = require('../models/Course');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
+const User = require('../models/User');
 
 // Get all courses
 exports.getAllCourses = asyncHandler(async (req, res, next) => {
@@ -188,6 +189,21 @@ exports.addSchedule = asyncHandler(async (req, res, next) => {
         schedule: newScheduleSlot
     });
 
+    // Notify only users enrolled in or teaching this course (via course room)
+    try {
+        if (global.io) {
+            const roomName = `course_${course._id}`;
+            global.io.to(roomName).emit('scheduleUpdated', { 
+                courseId: course._id.toString(), 
+                schedule: newScheduleSlot,
+                courseName: course.title
+            });
+            console.log(`Schedule update emitted to room ${roomName}`);
+        }
+    } catch (err) {
+        console.error('Failed to emit scheduleUpdated event:', err);
+    }
+
     res.status(201).json(course);
 });
 
@@ -282,5 +298,114 @@ exports.addTopic = asyncHandler(async (req, res, next) => {
     course.lessonsCount += 1;
     
     await course.save();
+    res.status(200).json({ success: true, data: course });
+});
+
+// @desc Delete a Topic
+// @route DELETE /api/courses/:id/units/:unitId/topics/:topicId
+exports.deleteTopic = asyncHandler(async (req, res, next) => {
+    const course = await Course.findById(req.params.id);
+    if (!course) return next(new ErrorResponse(`Course not found`, 404));
+
+    if (req.user.role !== 'admin' && course.teacherId && course.teacherId.toString() !== req.user.id) {
+        return next(new ErrorResponse(`Not authorized to update this course`, 403));
+    }
+
+    const unit = course.units.id(req.params.unitId) || course.units.find(u => u.id === req.params.unitId || u._id.toString() === req.params.unitId);
+    if (!unit) return next(new ErrorResponse(`Unit not found`, 404));
+
+    const topicIndex = unit.topics.findIndex(t => t.id === req.params.topicId || t._id?.toString() === req.params.topicId);
+    if (topicIndex === -1) return next(new ErrorResponse(`Topic not found`, 404));
+
+    unit.topics.splice(topicIndex, 1);
+    course.lessonsCount = Math.max(0, course.lessonsCount - 1);
+    
+    await course.save();
+    res.status(200).json({ success: true, data: course });
+});
+
+// @desc Enroll a student in a course (free enrollment)
+// @route POST /api/courses/:id/enroll
+exports.enrollInCourse = asyncHandler(async (req, res, next) => {
+    const course = await Course.findById(req.params.id);
+    if (!course) return next(new ErrorResponse('Course not found', 404));
+
+    const user = await User.findById(req.user.id);
+    if (!user) return next(new ErrorResponse('User not found', 404));
+
+    // Only students can self-enroll via this route
+    if (user.role === 'teacher' || user.role === 'admin') {
+        return res.status(200).json({ success: true, message: 'Teachers/admins have access to all courses' });
+    }
+
+    const alreadyEnrolled = user.enrolledCourses && user.enrolledCourses.some(
+        id => id.toString() === req.params.id
+    );
+
+    if (alreadyEnrolled) {
+        return res.status(200).json({ success: true, message: 'Already enrolled', alreadyEnrolled: true });
+    }
+
+    if (!user.enrolledCourses) user.enrolledCourses = [];
+    user.enrolledCourses.push(req.params.id);
+    await user.save();
+
+    // Increment enrolled count on course
+    await Course.findByIdAndUpdate(req.params.id, { $inc: { enrolledStudents: 1 } });
+
+    // Join the student's socket to the course room for real-time updates
+    try {
+        if (global.io) {
+            // Emit to the user's own active socket to join the course room
+            global.io.emit('user_enrolled_course', { userId: req.user.id, courseId: req.params.id });
+        }
+    } catch (err) { }
+
+    res.status(200).json({ success: true, message: 'Enrolled successfully', enrolled: true });
+});
+
+// @desc Add Schedule & Google Meet Link
+// @route POST /api/courses/:id/schedule
+exports.addSchedule = asyncHandler(async (req, res, next) => {
+    const course = await Course.findById(req.params.id);
+    if (!course) return next(new ErrorResponse(`Course not found`, 404));
+
+    if (req.user.role !== 'admin' && course.teacherId && course.teacherId.toString() !== req.user.id) {
+        return next(new ErrorResponse(`Not authorized`, 403));
+    }
+
+    const { day, startTime, endTime } = req.body;
+    
+    let meetLink = "https://meet.google.com/mock-123-abc";
+    try {
+        const googleMeet = require('../utils/googleMeet');
+        meetLink = await googleMeet.createMeetLink({ title: course.title, startTime, endTime }, req.user.id);
+    } catch (err) {
+        console.warn('Google Meet Link generation failed - using mock: ', err.message);
+    }
+
+    const newSchedule = {
+        day, startTime, endTime, meetLink
+    };
+
+    if(!course.schedule) course.schedule = [];
+    course.schedule.push(newSchedule);
+    await course.save();
+
+    // Notify only users enrolled in or teaching this course (via course room)
+    try {
+        if (global.io) {
+            const roomName = `course_${course._id}`;
+            global.io.to(roomName).emit('scheduleUpdated', { 
+                courseId: course._id.toString(), 
+                schedule: newSchedule,
+                courseName: course.title
+            });
+            console.log(`Schedule update emitted to room ${roomName}`);
+        }
+    } catch (err) {
+        console.error('Failed to emit scheduleUpdated event:', err);
+    }
+
     res.status(200).json({ success: true, data: course });
 });

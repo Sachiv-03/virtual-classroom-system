@@ -7,13 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { BookOpen, Play, FileText, ChevronLeft, CheckCircle, Video, BarChart2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { PlayCircle, Clock, CheckCircle2, FileText, ChevronRight, User as UserIcon, Calendar, Video, Edit2, Play, BookOpen, ChevronLeft, CheckCircle, BarChart2 } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { paymentService } from "@/services/paymentService";
+import { getCourseById, updateCourse, addClassSchedule } from '@/services/courseService';
 import { CourseBuilder } from "@/components/classroom/CourseBuilder";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -68,6 +71,12 @@ const Syllabus = () => {
     const [isEnrolled, setIsEnrolled] = useState(false);
     const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    
+    // Edit course info states
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [editCourseData, setEditCourseData] = useState({ title: '', description: '' });
+    const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+    const [scheduleData, setScheduleData] = useState({ day: 'Monday', startTime: '10:00', endTime: '11:00' });
 
     useEffect(() => {
         const fetchCourseData = async () => {
@@ -77,6 +86,7 @@ const Syllabus = () => {
                     user && user.role !== 'teacher' ? api.get(`/courses/${courseId}/enrollment-status`) : Promise.resolve({ data: { isEnrolled: user?.role === 'teacher' || user?.role === 'admin' } })
                 ]);
                 setCourse(courseRes.data);
+                setEditCourseData({ title: courseRes.data.title || '', description: courseRes.data.description || '' });
                 setIsEnrolled(enrollRes.data?.isEnrolled || false);
             } catch (error) {
                 toast.error("Failed to load course details");
@@ -101,6 +111,29 @@ const Syllabus = () => {
         setIsDialogOpen(true);
     };
 
+    const handleUpdateCourseInfo = async () => {
+        if (!courseId || !course) return;
+        try {
+            const updated = await updateCourse(courseId, editCourseData);
+            setCourse({ ...course, title: updated.title, description: updated.description });
+            setIsEditDialogOpen(false);
+            toast.success("Course info updated successfully!");
+        } catch (error) {
+            toast.error("Failed to update course info");
+        }
+    };
+
+    const handleAddSchedule = async () => {
+        if(!courseId || !course) return;
+        try {
+            await addClassSchedule(courseId, scheduleData);
+            setIsScheduleDialogOpen(false);
+            toast.success("Live class scheduled successfully! Syncing to dashboard...");
+        } catch (error) {
+            toast.error("Failed to schedule live class.");
+        }
+    };
+
     const handlePurchase = async () => {
         if (!courseId) return;
         setPaymentLoading(true);
@@ -122,8 +155,27 @@ const Syllabus = () => {
             }
 
             const orderData = await paymentService.createOrder(courseId);
-            if (!orderData.success) {
-                toast.error("Could not create order");
+            if (!orderData || !orderData.success) {
+                toast.error("Could not create order. Please check backend keys.");
+                setPaymentLoading(false);
+                return;
+            }
+
+            if (orderData.keyId === 'mock') {
+                const verifyRes = await paymentService.verifyPayment({
+                    razorpay_order_id: orderData.order.id, 
+                    razorpay_payment_id: "mock_payment_id", 
+                    razorpay_signature: "mock_signature",
+                    courseId
+                });
+                
+                if (verifyRes && verifyRes.success) {
+                    toast.success("Payment simulated locally! You are now enrolled.");
+                    setIsEnrolled(true);
+                    setCourse(prev => prev ? { ...prev, enrolledStudents: prev.enrolledStudents + 1 } : null);
+                } else {
+                    toast.error("Mock enrollment verification failed.");
+                }
                 setPaymentLoading(false);
                 return;
             }
@@ -224,10 +276,92 @@ const Syllabus = () => {
                                 </div>
                             </div>
 
-                            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">{course.title}</h1>
-                            <p className="text-lg text-muted-foreground max-w-2xl line-clamp-2 mb-6">
-                                {course.description}
-                            </p>
+                            <div className="flex justify-between items-start gap-4 mb-6">
+                                <div>
+                                    <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">{course.title}</h1>
+                                    <p className="text-lg text-muted-foreground max-w-2xl line-clamp-2">
+                                        {course.description}
+                                    </p>
+                                </div>
+                                {(user?.role === 'teacher' || user?.role === 'admin') && (
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm" className="bg-primary/20 hover:bg-primary/30 text-white border-white/20 shrink-0">
+                                                    <Video className="h-4 w-4 mr-2" /> Schedule Live Class
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-[400px]">
+                                                <DialogHeader>
+                                                    <DialogTitle>Schedule Live Class</DialogTitle>
+                                                    <DialogDescription>Create a Google Meet link for this course on a specific day.</DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium">Day of the Week</label>
+                                                        <select 
+                                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                            value={scheduleData.day} 
+                                                            onChange={(e) => setScheduleData({...scheduleData, day: e.target.value})}
+                                                        >
+                                                            {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => (
+                                                                <option key={d}>{d}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-sm font-medium">Start Time</label>
+                                                            <Input type="time" value={scheduleData.startTime} onChange={(e) => setScheduleData({...scheduleData, startTime: e.target.value})} />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-sm font-medium">End Time</label>
+                                                            <Input type="time" value={scheduleData.endTime} onChange={(e) => setScheduleData({...scheduleData, endTime: e.target.value})} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button onClick={handleAddSchedule}>Generate Google Meet</Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+
+                                        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm" className="bg-black/50 hover:bg-black text-white border-white/20 shrink-0">
+                                                    <Edit2 className="h-4 w-4 mr-2" /> Edit Course Info
+                                                </Button>
+                                            </DialogTrigger>
+                                        <DialogContent className="sm:max-w-[500px]">
+                                            <DialogHeader>
+                                                <DialogTitle>Edit Course Info</DialogTitle>
+                                                <DialogDescription>Update the title and description of your course.</DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-4 py-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium">Course Title</label>
+                                                    <Input 
+                                                        value={editCourseData.title} 
+                                                        onChange={(e) => setEditCourseData({...editCourseData, title: e.target.value})}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium">Course Description</label>
+                                                    <Textarea 
+                                                        value={editCourseData.description} 
+                                                        onChange={(e) => setEditCourseData({...editCourseData, description: e.target.value})}
+                                                        className="min-h-[100px]" 
+                                                    />
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <Button onClick={handleUpdateCourseInfo}>Save Changes</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                    </div>
+                                )}
+                            </div>
 
                             <div className="flex items-center gap-6 text-sm text-muted-foreground">
                                 <div className="flex items-center gap-2">

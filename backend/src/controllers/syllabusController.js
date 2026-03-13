@@ -1,195 +1,109 @@
-const fs = require('fs');
-const path = require('path');
-const pdf = require('pdf-parse'); // Ensure this package is installed: npm install pdf-parse
-const Syllabus = require('../models/Syllabus');
+const Subject = require('../models/Subject');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 
-// Helper function to extract structured data from PDF text
-const extractSyllabusData = (text) => {
-    const data = {
-        courseTitle: '',
-        courseCode: '',
-        semester: '',
-        academicYear: '',
-        description: '',
-        units: [],
-        learningOutcomes: [],
-        textbooks: [],
-        references: []
-    };
+exports.getAllSubjects = asyncHandler(async (req, res, next) => {
+    const subjects = await Subject.find().sort({ createdAt: -1 });
+    res.status(200).json({
+        success: true,
+        count: subjects.length,
+        data: subjects
+    });
+});
 
-    // --- Basic Header Parsing (Naive Heuristics) ---
-    const codeMatch = text.match(/Course\s*Code\s*[:\-\s]\s*([A-Z]{2,}\s*[0-9]{3,})/i) ||
-        text.match(/([A-Z]{2,}[0-9]{3,})/);
-    if (codeMatch) data.courseCode = codeMatch[1].trim();
-
-    const semMatch = text.match(/Semester\s*[:\-\s]\s*([IVX0-9]+)/i);
-    if (semMatch) data.semester = semMatch[1].trim();
-
-    const yearMatch = text.match(/Academic\s*Year\s*[:\-\s]\s*([0-9]{4}\s*-\s*[0-9]{2,4})/i);
-    if (yearMatch) data.academicYear = yearMatch[1].trim();
-    else data.academicYear = new Date().getFullYear().toString();
-
-    const titleMatch = text.match(/Course\s*(?:Title|Name)\s*[:\-\s](.+)/i);
-    if (titleMatch) {
-        data.courseTitle = titleMatch[1].trim();
-    } else {
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
-        if (lines.length > 0) data.courseTitle = lines[0];
+exports.getSubjectById = asyncHandler(async (req, res, next) => {
+    const subject = await Subject.findById(req.params.id);
+    if (!subject) {
+        return next(new ErrorResponse(`Subject not found with id of ${req.params.id}`, 404));
     }
+    res.status(200).json({
+        success: true,
+        data: subject
+    });
+});
 
-    // --- Parse Units ---
-    const unitRegex = /(?:UNIT|Unit|Module|Chapter)\s+([IVX0-9]+)(?:\s*[:\-])?/g;
-    let match;
-    let lastIndex = 0;
-    let currentUnit = null;
-
-    while ((match = unitRegex.exec(text)) !== null) {
-        if (currentUnit) {
-            const content = text.substring(lastIndex, match.index).trim();
-            const contentLines = content.split('\n').map(l => l.trim()).filter(l => l);
-            if (contentLines.length > 0) {
-                currentUnit.unitTitle = contentLines[0];
-                currentUnit.topics = contentLines.slice(1);
-            }
-            data.units.push(currentUnit);
-        }
-
-        currentUnit = { unitNo: match[1], unitTitle: '', topics: [] };
-        lastIndex = unitRegex.lastIndex;
-    }
-
-    if (currentUnit) {
-        const content = text.substring(lastIndex).trim();
-        const stopIndex = content.search(/(Text\s*Books|References|Course\s*Outcomes)/i);
-        const unitContent = stopIndex !== -1 ? content.substring(0, stopIndex) : content;
-
-        const contentLines = unitContent.split('\n').map(l => l.trim()).filter(l => l);
-        if (contentLines.length > 0) {
-            currentUnit.unitTitle = contentLines[0];
-            currentUnit.topics = contentLines.slice(1);
-        }
-        data.units.push(currentUnit);
-    }
-
-    const textBooksSection = text.match(/(?:Text\s*Books?|Reference\s*Books?)([\s\S]*?)(?:Course\s*Outcomes|Unit|$)/i);
-    if (textBooksSection) {
-        data.textbooks = textBooksSection[1].split('\n').map(l => l.trim()).filter(l => l.length > 3);
-    }
-
-    return data;
-};
-
-// @desc    Upload Syllabus PDF and Parse
-// @route   POST /api/syllabus/upload
-// @access  Admin
-exports.uploadSyllabus = asyncHandler(async (req, res, next) => {
-    if (!req.file) {
-        return next(new ErrorResponse('Please upload a file', 400));
-    }
-
-    const filePath = req.file.path;
-    const dataBuffer = fs.readFileSync(filePath);
-
-    // Parse PDF
-    const pdfData = await pdf(dataBuffer);
-    const extractedText = pdfData.text;
-
-    // Auto-structure Content
-    const structuredData = extractSyllabusData(extractedText);
-    structuredData.pdfPath = filePath;
-
-    // Create new Syllabus entry
-    const syllabus = new Syllabus(structuredData);
-    await syllabus.save();
-
+exports.createSubject = asyncHandler(async (req, res, next) => {
+    const subject = await Subject.create(req.body);
     res.status(201).json({
         success: true,
-        message: 'Syllabus uploaded and parsed successfully',
-        data: syllabus
+        data: subject
     });
 });
 
-// @desc    Get Syllabus by ID
-// @route   GET /api/syllabus/:id
-// @access  Public
-exports.getSyllabusById = asyncHandler(async (req, res, next) => {
-    const syllabus = await Syllabus.findById(req.params.id);
-    if (!syllabus) {
-        return next(new ErrorResponse(`Syllabus not found with id of ${req.params.id}`, 404));
+// Seed controller function handles calling the script logic directly or generating data itself
+exports.seedSyllabus = asyncHandler(async (req, res, next) => {
+    // We can also have the data array defined here or in a separate file.
+    // Given the prompt asking for 10 subjects and 10 chapters, we can generate it.
+    
+    const subjectNames = [
+        "Computer Science",
+        "Data Structures",
+        "Operating Systems",
+        "Database Management Systems",
+        "Computer Networks",
+        "Software Engineering",
+        "Artificial Intelligence",
+        "Machine Learning",
+        "Cyber Security",
+        "Cloud Computing"
+    ];
+
+    const chaptersTemplate = [
+        "Introduction to ",
+        "Basics of ",
+        "Advanced Concepts in ",
+        "Applications of ",
+        "Modern Trends in ",
+        "Algorithms for ",
+        "Case Studies in ",
+        "Project Work on ",
+        "Deep Dive into ",
+        "Future of "
+    ];
+
+    // For Data Structures specific example requested:
+    const dsChapters = [
+        "Introduction to Data Structures",
+        "Arrays",
+        "Linked Lists",
+        "Stacks",
+        "Queues",
+        "Trees",
+        "Binary Search Trees",
+        "Graphs",
+        "Hash Tables",
+        "Advanced Data Structures"
+    ];
+
+    let count = 0;
+    for (const name of subjectNames) {
+        const existing = await Subject.findOne({ name });
+        if (!existing) {
+            let chapters = [];
+            for (let i = 0; i < 10; i++) {
+                let chapterTitle = name === "Data Structures" ? dsChapters[i] : `${chaptersTemplate[i]}${name}`;
+                chapters.push({
+                    title: chapterTitle,
+                    content: `Comprehensive content overview covering ${chapterTitle}.`,
+                    resources: [
+                        { type: "pdf", title: "Lecture Notes", link: "https://example.com/notes.pdf" },
+                        { type: "video", title: "Lecture Video", link: "https://youtube.com/watch?v=dQw4w9WgXcQ" },
+                        { type: "article", title: "Further Reading", link: "https://example.com/reading" }
+                    ]
+                });
+            }
+
+            await Subject.create({
+                name,
+                description: `Complete university syllabus for ${name}`,
+                chapters
+            });
+            count++;
+        }
     }
 
     res.status(200).json({
         success: true,
-        data: syllabus
-    });
-});
-
-// @desc    Get All Syllabi
-// @route   GET /api/syllabus
-// @access  Public
-exports.getAllSyllabi = asyncHandler(async (req, res, next) => {
-    const syllabi = await Syllabus.find().sort({ createdAt: -1 });
-    res.status(200).json({
-        success: true,
-        count: syllabi.length,
-        data: syllabi
-    });
-});
-
-// @desc    Get Syllabus by Semester
-// @route   GET /api/syllabus/semester/:semester
-// @access  Public
-exports.getSyllabusBySemester = asyncHandler(async (req, res, next) => {
-    const syllabi = await Syllabus.find({ semester: req.params.semester });
-    res.status(200).json({
-        success: true,
-        count: syllabi.length,
-        data: syllabi
-    });
-});
-
-// @desc    Update Syllabus
-// @route   PUT /api/syllabus/:id
-// @access  Admin
-exports.updateSyllabus = asyncHandler(async (req, res, next) => {
-    let syllabus = await Syllabus.findById(req.params.id);
-
-    if (!syllabus) {
-        return next(new ErrorResponse(`Syllabus not found with id of ${req.params.id}`, 404));
-    }
-
-    syllabus = await Syllabus.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true
-    });
-
-    res.status(200).json({
-        success: true,
-        data: syllabus
-    });
-});
-
-// @desc    Delete Syllabus
-// @route   DELETE /api/syllabus/:id
-// @access  Admin
-exports.deleteSyllabus = asyncHandler(async (req, res, next) => {
-    const syllabus = await Syllabus.findById(req.params.id);
-
-    if (!syllabus) {
-        return next(new ErrorResponse(`Syllabus not found with id of ${req.params.id}`, 404));
-    }
-
-    // Delete PDF file
-    if (syllabus.pdfPath && fs.existsSync(syllabus.pdfPath)) {
-        fs.unlinkSync(syllabus.pdfPath);
-    }
-
-    await syllabus.deleteOne();
-
-    res.status(200).json({
-        success: true,
-        data: {}
+        message: `Seeded ${count} new subjects successfully.`
     });
 });

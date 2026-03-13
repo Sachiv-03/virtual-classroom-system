@@ -47,3 +47,41 @@ exports.validateLogin = [
         next();
     }
 ];
+
+exports.validateCourse = [
+    check('title', 'Course title is required').not().isEmpty().trim(),
+    check('category').optional().trim(),
+    (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+        next();
+    }
+];
+
+exports.validateAssignment = [
+    check('title', 'Assignment title is required').not().isEmpty().trim(),
+    check('dueDate', 'Due date is required').not().isEmpty(),
+    check('maxMarks', 'Max marks must be a positive number').optional().isFloat({ min: 0 }),
+    (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+        next();
+    }
+];
+
+exports.validateSchedule = [
+    check('day', 'Day is required').not().isEmpty(),
+    check('startTime', 'Start time is required').not().isEmpty(),
+    check('endTime', 'End time is required').not().isEmpty(),
+    (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+        next();
+    }
+];

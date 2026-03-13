@@ -6,6 +6,8 @@ interface User {
     name: string;
     email: string;
     role: string;
+    department?: string;
+    rollNumber?: string;
     pinnedChatUsers?: string[];
 }
 

@@ -24,47 +24,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-const classes = [
-  {
-    id: "math-101",
-    subject: "Advanced Mathematics",
-    teacher: "Dr. Sarah Wilson",
-    time: "9:00 AM",
-    duration: "1h 30m",
-    students: 28,
-    isLive: true,
-    color: "blue" as const,
-  },
-  {
-    id: "phys-101",
-    subject: "Physics 101",
-    teacher: "Prof. Michael Chen",
-    time: "11:00 AM",
-    duration: "1h",
-    students: 32,
-    color: "orange" as const,
-  },
-  {
-    id: "eng-101",
-    subject: "English Literature",
-    teacher: "Ms. Emily Brown",
-    time: "2:00 PM",
-    duration: "1h",
-    students: 24,
-    color: "green" as const,
-  },
-  {
-    id: "cs-101",
-    subject: "Computer Science",
-    teacher: "Mr. David Lee",
-    time: "4:00 PM",
-    duration: "1h 30m",
-    students: 20,
-    color: "purple" as const,
-  },
-];
 
 import { createAnnouncement, getLatestAnnouncements } from "@/services/announcementService";
+import { useSocket } from '@/context/SocketContext';
 import { formatDistanceToNow } from 'date-fns';
 
 
@@ -83,7 +45,7 @@ import { Textarea } from "@/components/ui/textarea";
 const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isTeacher = user?.role === 'teacher';
+  const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
@@ -96,6 +58,20 @@ const Index = () => {
     fetchDashboardData();
     fetchAnnouncements();
   }, [user]);
+
+  // Listen for real-time schedule updates via Socket.IO
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+    
+    const refreshHandler = () => {
+      console.log('Schedule updated - refreshing dashboard');
+      fetchDashboardData();
+    };
+    
+    socket.on('scheduleUpdated', refreshHandler);
+    return () => { socket.off('scheduleUpdated', refreshHandler); };
+  }, [socket]);
 
   const fetchAnnouncements = async () => {
     try {
@@ -199,7 +175,7 @@ const Index = () => {
                 <StatsCard
                   icon={BookOpen}
                   label="Assigned"
-                  value={stats?.totalAssignments || "0"}
+                  value={stats?.enrolledCoursesCount || "0"}
                   trend="Total assignments"
                   variant="gradient"
                 />
@@ -260,15 +236,27 @@ const Index = () => {
                 <Layout className="h-5 w-5 text-primary" />
                 {isTeacher ? "Your Teaching Schedule" : "Your Class Schedule"}
               </h2>
-              <span className="text-sm text-muted-foreground">4 sessions today</span>
+              <span className="text-sm text-muted-foreground">{stats?.classes?.length || 0} sessions today</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {classes.map((classItem, index) => (
-                <div key={index} className="animate-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
-                  <ClassCard {...classItem} />
+            {stats?.classes?.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {stats.classes.map((classItem: any, index: number) => (
+                  <div key={index} className="animate-slide-up" style={{ animationDelay: `${index * 100}ms` }} onClick={() => {
+                      if(classItem.meetLink && !classItem.meetLink.includes('mock')) {
+                          window.open(classItem.meetLink, '_blank');
+                      } else {
+                          navigate(`/live/${classItem.id}`);
+                      }
+                  }}>
+                    <ClassCard {...classItem} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+                <div className="p-8 text-center bg-card border rounded-xl object-contain">
+                    <p className="text-muted-foreground">No classes scheduled for today.</p>
                 </div>
-              ))}
-            </div>
+            )}
           </div>
 
 
@@ -276,13 +264,13 @@ const Index = () => {
           {/* Bottom Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <UpcomingAssignments />
+              <UpcomingAssignments assignments={stats?.upcomingAssignments} />
             </div>
 
             {/* Focus & Productivity */}
             <div className="space-y-4">
               {!isTeacher && <FocusTimer />}
-              <StreakCard />
+              <StreakCard streak={stats?.streak} loginHistory={stats?.loginHistory} />
               {isTeacher && (
                 <div className="p-6 rounded-2xl bg-card border border-border space-y-6">
                   <h3 className="font-bold text-lg flex items-center gap-2">

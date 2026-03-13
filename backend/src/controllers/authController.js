@@ -56,6 +56,28 @@ exports.login = asyncHandler(async (req, res, next) => {
         return next(new ErrorResponse('Invalid credentials', 401));
     }
 
+    // Update streak and lastLoginDate
+    const now = new Date();
+    const lastLogin = new Date(user.lastLoginDate);
+    
+    // Set both to midnight for comparison
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastDay = new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate());
+
+    if (lastDay.getTime() === yesterday.getTime()) {
+        user.streak += 1;
+    } else if (lastDay.getTime() < yesterday.getTime()) {
+        user.streak = 1;
+    }
+    
+    user.lastLoginDate = now;
+    if (!user.loginHistory.some(d => new Date(d).toDateString() === now.toDateString())) {
+        user.loginHistory.push(now);
+    }
+    await user.save();
+
     sendTokenResponse(user, 200, res);
 });
 
@@ -83,6 +105,8 @@ const sendTokenResponse = (user, statusCode, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                department: user.department,
+                rollNumber: user.rollNumber,
             },
         });
 };
@@ -181,4 +205,36 @@ exports.googleLogin = asyncHandler(async (req, res, next) => {
     }
 
     sendTokenResponse(user, 200, res);
+});
+
+// @desc    Update user profile
+// @route   PUT /api/auth/updateprofile
+// @access  Private
+exports.updateProfile = asyncHandler(async (req, res, next) => {
+    const fieldsToUpdate = {
+        name: req.body.name,
+        department: req.body.department,
+        rollNumber: req.body.rollNumber,
+        about: req.body.about,
+        phoneNumber: req.body.phoneNumber
+    };
+
+    const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
+        new: true,
+        runValidators: true
+    });
+
+    res.status(200).json({
+        success: true,
+        data: user
+    });
+});
+
+// @desc    Get currently logged in user (with gamification fields)
+// @route   GET /api/auth/me
+// @access  Private
+exports.getMe = asyncHandler(async (req, res, next) => {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return next(new ErrorResponse('User not found', 404));
+    res.status(200).json({ success: true, data: user });
 });

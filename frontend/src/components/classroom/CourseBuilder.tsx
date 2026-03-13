@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { Plus, PlayCircle, Clock, Trash2, Edit2, Check, X, FileText } from 'lucide-react';
-import { addCourseUnit, updateCourseUnit, deleteCourseUnit, addCourseTopic } from '@/services/courseService';
+import { addCourseUnit, updateCourseUnit, deleteCourseUnit, addCourseTopic, deleteCourseTopic } from '@/services/courseService';
 import { toast } from 'sonner';
 
 interface Topic {
@@ -13,6 +13,7 @@ interface Topic {
     duration: string;
     videoUrl: string;
     completed: boolean;
+    materials?: any[];
 }
 
 interface Unit {
@@ -40,14 +41,14 @@ export function CourseBuilder({ courseId, initialUnits, onUpdate, isTeacher }: C
     
     // Topic Add states
     const [addingTopicToUnitId, setAddingTopicToUnitId] = useState<string | null>(null);
-    const [newTopicData, setNewTopicData] = useState({ title: '', duration: '', videoUrl: '' });
+    const [newTopicData, setNewTopicData] = useState({ title: '', duration: '', videoUrl: '', materialName: '', materialUrl: '' });
 
     const handleAddUnit = async () => {
         if (!newUnitTitle.trim()) return;
         try {
             const res = await addCourseUnit(courseId, newUnitTitle.trim());
-            setUnits(res.data.units);
-            onUpdate(res.data.units);
+            setUnits(res.units);
+            onUpdate(res.units);
             setIsAddingUnit(false);
             setNewUnitTitle("");
             toast.success("Unit added");
@@ -60,8 +61,8 @@ export function CourseBuilder({ courseId, initialUnits, onUpdate, isTeacher }: C
         if (!editUnitTitle.trim()) return;
         try {
             const res = await updateCourseUnit(courseId, unitId, editUnitTitle.trim());
-            setUnits(res.data.units);
-            onUpdate(res.data.units);
+            setUnits(res.units);
+            onUpdate(res.units);
             setEditingUnitId(null);
             toast.success("Unit updated");
         } catch (error) {
@@ -73,8 +74,8 @@ export function CourseBuilder({ courseId, initialUnits, onUpdate, isTeacher }: C
         if (!confirm("Are you sure you want to delete this unit and all its topics?")) return;
         try {
             const res = await deleteCourseUnit(courseId, unitId);
-            setUnits(res.data.units);
-            onUpdate(res.data.units);
+            setUnits(res.units);
+            onUpdate(res.units);
             toast.success("Unit deleted");
         } catch (error) {
             toast.error("Failed to delete unit");
@@ -82,16 +83,36 @@ export function CourseBuilder({ courseId, initialUnits, onUpdate, isTeacher }: C
     };
 
     const handleAddTopic = async (unitId: string) => {
-        if (!newTopicData.title.trim()) return;
+        let materials = [];
+        if (newTopicData.materialName && newTopicData.materialUrl) {
+            materials.push({
+                name: newTopicData.materialName,
+                type: newTopicData.materialName.toLowerCase().endsWith('.pdf') ? 'pdf' : 'link',
+                url: newTopicData.materialUrl
+            });
+        }
+        
         try {
-            const res = await addCourseTopic(courseId, unitId, newTopicData);
-            setUnits(res.data.units);
-            onUpdate(res.data.units);
+            const res = await addCourseTopic(courseId, unitId, { ...newTopicData, materials });
+            setUnits(res.units);
+            onUpdate(res.units);
             setAddingTopicToUnitId(null);
-            setNewTopicData({ title: '', duration: '', videoUrl: '' });
+            setNewTopicData({ title: '', duration: '', videoUrl: '', materialName: '', materialUrl: '' });
             toast.success("Topic added");
         } catch (error) {
             toast.error("Failed to add topic");
+        }
+    };
+
+    const handleDeleteTopic = async (unitId: string, topicId: string) => {
+        if (!confirm("Are you sure you want to delete this topic?")) return;
+        try {
+            const res = await deleteCourseTopic(courseId, unitId, topicId);
+            setUnits(res.units);
+            onUpdate(res.units);
+            toast.success("Topic deleted");
+        } catch (error) {
+            toast.error("Failed to delete topic");
         }
     };
 
@@ -167,21 +188,36 @@ export function CourseBuilder({ courseId, initialUnits, onUpdate, isTeacher }: C
                                     <AccordionContent className="pt-0 pb-0">
                                         <div className="p-0 space-y-0 divide-y divide-border/50">
                                             {unit.topics && unit.topics.map((topic, tIdx) => (
-                                                <div key={topic.id} className="flex items-start gap-3 p-4 hover:bg-muted/10 transition-colors">
+                                                <div key={topic.id} className="group flex items-start gap-3 p-4 hover:bg-muted/10 transition-colors relative">
                                                     <div className="mt-0.5"><PlayCircle className="h-5 w-5 text-muted-foreground shrink-0" /></div>
-                                                    <div className="flex-1 min-w-0">
+                                                    <div className="flex-1 min-w-0 pr-8">
                                                         <p className="text-sm font-medium">{topic.title}</p>
-                                                        <div className="flex items-center gap-3 mt-1.5 opacity-70">
+                                                        <div className="flex items-center gap-3 mt-1.5 opacity-70 flex-wrap">
                                                             {topic.duration && (
                                                                 <span className="text-xs flex items-center gap-1"><Clock className="h-3 w-3" /> {topic.duration}</span>
                                                             )}
                                                             {topic.videoUrl && (
                                                                 <a href={topic.videoUrl} target="_blank" rel="noreferrer" className="text-xs flex items-center gap-1 text-primary hover:underline">
-                                                                    View Resource
+                                                                    View Video
                                                                 </a>
                                                             )}
+                                                            {topic.materials && topic.materials.map((mat: any, idx) => (
+                                                                <a key={idx} href={mat.url} target="_blank" rel="noreferrer" className="text-xs flex items-center gap-1 text-primary hover:underline">
+                                                                    <FileText className="h-3 w-3" /> {mat.name}
+                                                                </a>
+                                                            ))}
                                                         </div>
                                                     </div>
+                                                    {isTeacher && (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="absolute right-4 top-4 h-8 w-8 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => handleDeleteTopic(unit._id || unit.id, topic.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             ))}
                                             
@@ -208,6 +244,18 @@ export function CourseBuilder({ courseId, initialUnits, onUpdate, isTeacher }: C
                                                             placeholder="Video/Resource URL (Optional)"
                                                             value={newTopicData.videoUrl}
                                                             onChange={e => setNewTopicData({...newTopicData, videoUrl: e.target.value})}
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <Input 
+                                                            placeholder="Study Material Name (e.g., Notes.pdf)"
+                                                            value={newTopicData.materialName}
+                                                            onChange={e => setNewTopicData({...newTopicData, materialName: e.target.value})}
+                                                        />
+                                                        <Input 
+                                                            placeholder="Study Material URL"
+                                                            value={newTopicData.materialUrl}
+                                                            onChange={e => setNewTopicData({...newTopicData, materialUrl: e.target.value})}
                                                         />
                                                     </div>
                                                     <div className="flex justify-end gap-2 pt-2">

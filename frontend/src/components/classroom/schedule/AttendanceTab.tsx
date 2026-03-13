@@ -206,6 +206,12 @@ const AttendanceTab = () => {
                                                     <span className="text-border">|</span>
                                                     <Clock className="h-3 w-3" />
                                                     <span>{new Date(record.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    {record.duration > 0 && (
+                                                        <>
+                                                          <span className="text-border">|</span>
+                                                          <span className="font-medium text-xs bg-muted px-2 py-0.5 rounded">{record.duration} mins</span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

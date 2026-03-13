@@ -4,14 +4,58 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { User, Bell, Palette, Shield, LogOut } from "lucide-react";
+import { User, Bell, Palette, Shield, LogOut, Users, BookOpen, GraduationCap } from "lucide-react";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
 const Settings = () => {
-    const { logout, user } = useAuth();
+    const { logout, user, login, updateUser } = useAuth();
     const navigate = useNavigate();
+    const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+
+    const [isEditing, setIsEditing] = useState(false);
+    const [profileData, setProfileData] = useState({
+        name: user?.name || "",
+        department: (user as any)?.department || "",
+        rollNumber: (user as any)?.rollNumber || ""
+    });
+    const [students, setStudents] = useState<any[]>([]);
+    const [loadingStudents, setLoadingStudents] = useState(false);
+
+    useEffect(() => {
+        if (isTeacher) {
+            fetchStudents();
+        }
+    }, [isTeacher]);
+
+    const fetchStudents = async () => {
+        setLoadingStudents(true);
+        try {
+            const response = await api.get('/dashboard/students');
+            setStudents(response.data.data);
+        } catch (error) {
+            console.error("Error fetching students:", error);
+        } finally {
+            setLoadingStudents(false);
+        }
+    };
+
+    const handleUpdateProfile = async () => {
+        try {
+            const response = await api.put('/auth/updateprofile', profileData);
+            if (response.data.success) {
+                toast.success("Profile updated successfully");
+                setIsEditing(false);
+                updateUser(response.data.data);
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to update profile");
+        }
+    };
 
     const handleSignOut = () => {
         logout();
@@ -50,16 +94,111 @@ const Settings = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Full Name</Label>
-                                        <div className="p-2 rounded-md bg-muted/50 border text-sm">{user?.name}</div>
+                                        {isEditing ? (
+                                            <Input 
+                                                value={profileData.name} 
+                                                onChange={(e) => setProfileData({...profileData, name: e.target.value})} 
+                                            />
+                                        ) : (
+                                            <div className="p-2 rounded-md bg-muted/50 border text-sm">{profileData.name}</div>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Email Address</Label>
-                                        <div className="p-2 rounded-md bg-muted/50 border text-sm">{user?.email}</div>
+                                        <div className="p-2 rounded-md bg-muted/20 border text-sm text-muted-foreground">{user?.email}</div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Department</Label>
+                                        {isEditing ? (
+                                            <Input 
+                                                value={profileData.department} 
+                                                onChange={(e) => setProfileData({...profileData, department: e.target.value})} 
+                                                placeholder="e.g. Computer Science"
+                                            />
+                                        ) : (
+                                            <div className="p-2 rounded-md bg-muted/50 border text-sm">{profileData.department || "Not set"}</div>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Roll Number / Employee ID</Label>
+                                        {isEditing ? (
+                                            <Input 
+                                                value={profileData.rollNumber} 
+                                                onChange={(e) => setProfileData({...profileData, rollNumber: e.target.value})} 
+                                                placeholder="e.g. CS101"
+                                            />
+                                        ) : (
+                                            <div className="p-2 rounded-md bg-muted/50 border text-sm">{profileData.rollNumber || "Not set"}</div>
+                                        )}
                                     </div>
                                 </div>
-                                <Button onClick={() => toast.info("Profile editing coming soon!")}>Edit Profile</Button>
+                                <div className="flex gap-2">
+                                    {isEditing ? (
+                                        <>
+                                            <Button onClick={handleUpdateProfile}>Save Changes</Button>
+                                            <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                                        </>
+                                    ) : (
+                                        <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+                                    )}
+                                </div>
                             </CardContent>
                         </Card>
+
+                        {isTeacher && (
+                            <Card className="md:col-span-2">
+                                <CardHeader>
+                                    <div className="flex items-center gap-2">
+                                        <Users className="h-5 w-5 text-primary" />
+                                        <CardTitle>Student List</CardTitle>
+                                    </div>
+                                    <CardDescription>View all students registered in the system.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {loadingStudents ? (
+                                        <div className="flex justify-center py-4">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="border-b text-left">
+                                                        <th className="pb-2 font-semibold">Name</th>
+                                                        <th className="pb-2 font-semibold">Email</th>
+                                                        <th className="pb-2 font-semibold">Roll Number</th>
+                                                        <th className="pb-2 font-semibold">Department</th>
+                                                        <th className="pb-2 font-semibold">Level/XP</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {students.length > 0 ? (
+                                                        students.map((student) => (
+                                                            <tr key={student._id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                                                                <td className="py-3">{student.name}</td>
+                                                                <td className="py-3 text-muted-foreground">{student.email}</td>
+                                                                <td className="py-3">{student.rollNumber || "N/A"}</td>
+                                                                <td className="py-3">{student.department || "N/A"}</td>
+                                                                <td className="py-3">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <GraduationCap className="h-3 w-3 text-primary" />
+                                                                        <span>Lvl {student.level} ({student.xp} XP)</span>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        <tr>
+                                                            <td colSpan={5} className="py-4 text-center text-muted-foreground">No students found.</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
 
                         <Card>
                             <CardHeader>

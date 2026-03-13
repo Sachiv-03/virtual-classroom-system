@@ -1,7 +1,24 @@
 import api from '@/lib/api';
 
-export const markAttendance = async (courseId: string) => {
-    const response = await api.post('/attendance/mark', { courseId });
+/**
+ * Mark attendance with automatic retry on 429 (rate limit) after 13 seconds.
+ */
+export const markAttendance = async (courseId: string, retryCount = 0): Promise<any> => {
+    try {
+        const response = await api.post('/attendance/mark', { courseId });
+        return response.data;
+    } catch (error: any) {
+        if (error?.response?.status === 429 && retryCount < 2) {
+            // Wait 13 seconds before retrying (model capacity / rate limit)
+            await new Promise(resolve => setTimeout(resolve, 13000));
+            return markAttendance(courseId, retryCount + 1);
+        }
+        throw error;
+    }
+};
+
+export const leaveAttendance = async (courseId: string) => {
+    const response = await api.put('/attendance/leave', { courseId });
     return response.data;
 };
 

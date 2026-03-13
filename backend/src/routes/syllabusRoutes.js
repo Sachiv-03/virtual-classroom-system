@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const syllabusController = require('../controllers/syllabusController');
-const upload = require('../middleware/uploadMiddleware');
+const aiSyllabusController = require('../controllers/aiSyllabusController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
-// Define routes
-router.post('/upload', protect, authorize('admin'), upload.single('file'), syllabusController.uploadSyllabus);
-router.get('/', syllabusController.getAllSyllabi);
-router.get('/:id', syllabusController.getSyllabusById);
-router.get('/semester/:semester', syllabusController.getSyllabusBySemester);
-router.put('/:id', protect, authorize('admin'), syllabusController.updateSyllabus);
-router.delete('/:id', protect, authorize('admin'), syllabusController.deleteSyllabus);
+// Public view - with role conditional check inside controller for approved only
+router.get('/', protect, aiSyllabusController.getSyllabuses);
+router.get('/:id', protect, aiSyllabusController.getSyllabus);
+
+// Admin Only
+router.post('/create', protect, authorize('admin', 'teacher'), aiSyllabusController.createSyllabus);
+router.post('/generate-resources/:id', protect, authorize('admin'), aiSyllabusController.generateResources);
+router.put('/approve/:id', protect, authorize('admin'), aiSyllabusController.approveSyllabus);
+router.put('/update/:id', protect, authorize('admin'), aiSyllabusController.updateSyllabus);
+router.delete('/delete/:id', protect, authorize('admin'), aiSyllabusController.deleteSyllabus);
 
 module.exports = router;

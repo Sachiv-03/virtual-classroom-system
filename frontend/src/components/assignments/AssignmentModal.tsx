@@ -122,16 +122,16 @@ export const AssignmentModal = ({ isOpen, onClose, onSuccess, assignment }: Assi
                                 required
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="maxMarks">Max Marks</Label>
-                            <Input
-                                id="maxMarks"
-                                type="number"
-                                value={formData.maxMarks}
-                                onChange={(e) => setFormData({ ...formData, maxMarks: parseInt(e.target.value) })}
-                                required
-                            />
-                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="maxMarks">Max Marks</Label>
+                        <Input
+                            id="maxMarks"
+                            type="number"
+                            value={formData.maxMarks}
+                            onChange={(e) => setFormData({ ...formData, maxMarks: parseInt(e.target.value) })}
+                            required
+                        />
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

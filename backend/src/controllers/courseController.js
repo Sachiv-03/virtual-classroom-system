@@ -15,7 +15,7 @@ exports.getAllCourses = asyncHandler(async (req, res, next) => {
 
             if (user.role === 'teacher' || user.role === 'admin') {
                 courseObj.isEnrolled = true;
-            } else if (user.enrolledCourses && user.enrolledCourses.includes(courseObj._id.toString())) {
+            } else if (user.enrolledCourses && user.enrolledCourses.some(id => id.toString() === courseObj._id.toString())) {
                 courseObj.isEnrolled = true;
             }
             return courseObj;
@@ -95,7 +95,9 @@ exports.checkEnrollmentStatus = asyncHandler(async (req, res, next) => {
     if (!user) {
         return next(new ErrorResponse('User not found', 404));
     }
-    const isEnrolled = user.enrolledCourses && user.enrolledCourses.includes(req.params.id);
+    const isEnrolled = user.enrolledCourses && user.enrolledCourses.some(
+        id => id.toString() === req.params.id
+    );
     res.json({ isEnrolled: !!isEnrolled });
 });
 

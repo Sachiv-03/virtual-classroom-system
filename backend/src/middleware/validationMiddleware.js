@@ -60,6 +60,19 @@ exports.validateCourse = [
     }
 ];
 
+exports.validateCourseUpdate = [
+    check('title', 'Course title cannot be empty').optional().not().isEmpty().trim(),
+    check('category').optional().trim(),
+    (req, res, next) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+        next();
+    }
+];
+
+
 exports.validateAssignment = [
     check('title', 'Assignment title is required').not().isEmpty().trim(),
     check('dueDate', 'Due date is required').not().isEmpty(),

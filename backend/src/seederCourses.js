@@ -7,7 +7,7 @@ dotenv.config();
 const courses = [
     {
         title: "Advanced Mathematics",
-        teacher: "Dr. Sarah Wilson",
+        teacher: "Unassigned",
         category: "Mathematics",
         thumbnail: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800&auto=format&fit=crop&q=60",
         rating: 4.8,
@@ -21,7 +21,7 @@ const courses = [
     },
     {
         title: "Physics 101",
-        teacher: "Prof. Michael Chen",
+        teacher: "Unassigned",
         category: "Science",
         thumbnail: "https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?w=800&auto=format&fit=crop&q=60",
         rating: 4.6,
@@ -35,7 +35,7 @@ const courses = [
     },
     {
         title: "English Literature",
-        teacher: "Ms. Emily Brown",
+        teacher: "Unassigned",
         category: "Arts",
         thumbnail: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=800&auto=format&fit=crop&q=60",
         rating: 4.9,
@@ -49,7 +49,7 @@ const courses = [
     },
     {
         title: "Computer Science",
-        teacher: "Mr. David Lee",
+        teacher: "Unassigned",
         category: "Technology",
         thumbnail: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=60",
         rating: 4.7,

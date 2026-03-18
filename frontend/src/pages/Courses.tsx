@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookOpen, Users, Star, Play, ArrowRight, Filter, Search, Plus, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -14,7 +15,21 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { enrollInCourse } from "@/services/courseService";
+import { enrollInCourse, updateCourse } from "@/services/courseService";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const colorVariants = {
   blue: "from-primary/80 to-primary",
@@ -36,12 +51,14 @@ interface Course {
   thumbnail: string;
   color?: keyof typeof colorVariants;
   isEnrolled?: boolean;
+  teacherId?: string;
 }
 
 const Courses = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isTeacher = user?.role === 'teacher';
+  const isAdmin = user?.role === 'admin';
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,30 +66,50 @@ const Courses = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [assigningLoading, setAssigningLoading] = useState(false);
+
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const response = await api.get('/courses');
-        // Handle both unwrapped and wrapped responses
-        const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
-
-        const data = rawData.map((course: any, index: number) => ({
-          ...course,
-          color: Object.keys(colorVariants)[index % 4], // Assign cyclic colors
-          progress: Math.floor(Math.random() * 100) // Mock progress for now
-        }));
-        setCourses(data);
-        setFilteredCourses(data);
-      } catch (error: any) {
-        console.error("Error fetching courses:", error);
-        toast.error(error.response?.data?.message || error.message || "Failed to fetch courses");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCourses();
+    if (isAdmin) {
+      fetchTeachers();
+    }
   }, []);
+
+  const fetchCourses = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/courses');
+      const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
+
+      const data = rawData.map((course: any, index: number) => ({
+        ...course,
+        color: Object.keys(colorVariants)[index % 4],
+        progress: course.progress || 0 // Use real progress if available
+      }));
+      setCourses(data);
+      setFilteredCourses(data);
+    } catch (error: any) {
+      console.error("Error fetching courses:", error);
+      toast.error(error.response?.data?.message || error.message || "Failed to fetch courses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTeachers = async () => {
+    try {
+      const response = await api.get('/dashboard/teachers');
+      // Handle both unwrapped and wrapped response formats
+      const data = Array.isArray(response.data) ? response.data : (response.data.data || []);
+      setTeachers(data);
+    } catch (error) {
+      console.error("Error fetching teachers:", error);
+      setTeachers([]); // Reset to empty array on error
+    }
+  };
 
   useEffect(() => {
     let result = courses;
@@ -112,13 +149,17 @@ const Courses = () => {
       } else {
         toast.success(`Enrolled in "${course.title}" successfully!`);
       }
-      // Refresh courses to update enrollment status
+      
+      // Navigate to the course immediately
+      navigate(`/courses/${course._id}`);
+      
+      // Refresh courses to update internal state (optional but good for consistency if they go back)
       const response = await api.get('/courses');
       const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
       const data = rawData.map((c: any, index: number) => ({
         ...c,
         color: Object.keys(colorVariants)[index % 4],
-        progress: Math.floor(Math.random() * 100)
+        progress: c.progress || 0
       }));
       setCourses(data);
       setFilteredCourses(data);
@@ -131,6 +172,24 @@ const Courses = () => {
 
   const handleCreateCourse = () => {
     navigate("/courses/new");
+  };
+
+  const handleAssignTeacher = async (teacher: any) => {
+    if (!selectedCourse) return;
+    setAssigningLoading(true);
+    try {
+      await updateCourse(selectedCourse._id, {
+        teacherId: teacher._id,
+        teacher: teacher.name
+      });
+      toast.success(`Assigned ${teacher.name} to "${selectedCourse.title}"`);
+      setIsAssignModalOpen(false);
+      fetchCourses(); // Refresh list
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to assign teacher");
+    } finally {
+      setAssigningLoading(false);
+    }
   };
 
   if (loading) {
@@ -153,10 +212,10 @@ const Courses = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-3xl font-bold text-foreground">
-                {isTeacher ? "Courses You Teach" : "Available & Enrolled Courses"}
+                {isAdmin ? "Course Assignment" : isTeacher ? "Courses You Teach" : "Available & Enrolled Courses"}
               </h2>
               <p className="text-muted-foreground mt-1">
-                {isTeacher ? "Manage your courses and student content" : "Browse all available courses and manage your enrollments"}
+                {isAdmin ? "Assign teachers to courses" : isTeacher ? "Manage your courses and student content" : "Browse all available courses and manage your enrollments"}
               </p>
             </div>
 
@@ -188,7 +247,7 @@ const Courses = () => {
                 </SelectContent>
               </Select>
 
-              {isTeacher && (
+              { (isTeacher || isAdmin) && (
                 <Button onClick={handleCreateCourse} className="gap-2">
                   <Plus className="h-4 w-4" />
                   New Course
@@ -248,13 +307,21 @@ const Courses = () => {
                       {course.title}
                     </h3>
 
-                    {!isTeacher && (
+                    {!isTeacher && !isAdmin && (
                       <div className="flex items-center gap-2 mb-4">
                         <Avatar className="h-6 w-6">
                           <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${course.teacher}`} />
-                          <AvatarFallback>{course.teacher.split(" ").map(n => n[0]).join("")}</AvatarFallback>
+                          <AvatarFallback>{course.teacher ? course.teacher.split(" ").map(n => n[0]).join("") : "T"}</AvatarFallback>
                         </Avatar>
-                        <span className="text-sm text-muted-foreground">{course.teacher}</span>
+                        <span className="text-sm text-muted-foreground">{course.teacher || "Unassigned"}</span>
+                      </div>
+                    )}
+
+                    {(isAdmin || isTeacher) && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-xs font-semibold px-2 py-1 rounded bg-muted">
+                          Teacher: {course.teacher || "Unassigned"}
+                        </span>
                       </div>
                     )}
 
@@ -269,41 +336,53 @@ const Courses = () => {
                       </div>
                     </div>
 
-                    {isTeacher ? (
+                    {isAdmin ? (
+                      <div className="pt-2">
+                        <Button 
+                          variant="outline" 
+                          className="w-full gap-2" 
+                          onClick={() => {
+                            setSelectedCourse(course);
+                            setIsAssignModalOpen(true);
+                          }}
+                        >
+                          <Users className="h-4 w-4" />
+                          Assign Teacher
+                        </Button>
+                      </div>
+                    ) : isTeacher ? (
                       <div className="pt-2 flex gap-2">
                         <Button variant="outline" className="flex-1" onClick={() => handleAction(course)}>Manage Content</Button>
                         <Button variant="outline" className="flex-1" onClick={() => toast.info("Viewing analytics...")}>Analytics</Button>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {course.isEnrolled ? (
-                          <>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Progress</span>
-                              <span className="font-medium text-foreground">{course.progress}%</span>
-                            </div>
-                            <Progress value={course.progress} className="h-2" />
-                            <Button
-                              className="w-full mt-2 group/btn"
-                              onClick={() => handleAction(course)}
-                            >
-                              {course.progress === 0 ? "Start Course" : "Continue Learning"}
-                              <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            className="w-full mt-2 group/btn bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-                            disabled={enrollingId === course._id}
-                            onClick={(e) => handleEnroll(course, e)}
-                          >
-                            <BookOpen className="h-4 w-4 mr-2" />
-                            {enrollingId === course._id ? 'Enrolling...' : (course.price === 0 ? 'Enroll for Free' : 'View Details / Purchase')}
-                            <ArrowRight className="h-4 w-4 ml-auto group-hover/btn:translate-x-1 transition-transform" />
-                          </Button>
-                        )}
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Progress</span>
+                          <span className="font-medium text-foreground">{course.isEnrolled ? (course.progress || 0) : 0}%</span>
+                        </div>
+                        <Progress value={course.isEnrolled ? (course.progress || 0) : 0} className="h-2" />
+                        <Button
+                          className="w-full mt-2 group/btn"
+                          disabled={enrollingId === course._id}
+                          onClick={(e) => {
+                            if (!course.isEnrolled) {
+                              handleEnroll(course, e);
+                            } else {
+                              handleAction(course);
+                            }
+                          }}
+                        >
+                          {enrollingId === course._id ? (
+                            "Starting..."
+                          ) : (
+                            !course.isEnrolled ? "Start Course" : "Continue Learning"
+                          )}
+                          <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+                        </Button>
                       </div>
                     )}
+
                   </CardContent>
                 </Card>
               ))
@@ -311,6 +390,49 @@ const Courses = () => {
           </div>
         </div>
       </main>
+
+      {/* Assign Teacher Modal */}
+      <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Teacher to Course</DialogTitle>
+            <DialogDescription>
+              Select a teacher to assign to "{selectedCourse?.title}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            <Label>Registered Teachers</Label>
+            <div className="grid gap-2">
+              {teachers?.map((teacher) => (
+                <Button
+                  key={teacher._id}
+                  variant="outline"
+                  className="w-full justify-start text-left h-auto py-3 px-4"
+                  onClick={() => handleAssignTeacher(teacher)}
+                  disabled={assigningLoading}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{teacher.name}</span>
+                    <span className="text-xs text-muted-foreground">{teacher.email} • {teacher.department || "General"}</span>
+                  </div>
+                </Button>
+              ))}
+              {(!teachers || teachers.length === 0) && (
+                <p className="text-center text-sm text-muted-foreground py-4">No teachers available.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-start">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsAssignModalOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

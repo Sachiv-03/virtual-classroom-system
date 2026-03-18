@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/classroom/Sidebar";
 import { Header } from "@/components/classroom/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -11,11 +12,18 @@ import { toast } from "sonner";
 import { User, Bell, Palette, Shield, LogOut, Users, BookOpen, GraduationCap } from "lucide-react";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useTheme } from "next-themes";
 
 const Settings = () => {
     const { logout, user, login, updateUser } = useAuth();
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
     const navigate = useNavigate();
     const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const [isEditing, setIsEditing] = useState(false);
     const [profileData, setProfileData] = useState({
@@ -36,9 +44,11 @@ const Settings = () => {
         setLoadingStudents(true);
         try {
             const response = await api.get('/dashboard/students');
-            setStudents(response.data.data);
+            setStudents(response.data.data || []);
         } catch (error) {
             console.error("Error fetching students:", error);
+            toast.error("Failed to load student list");
+            setStudents([]); // Reset to empty array on error
         } finally {
             setLoadingStudents(false);
         }
@@ -165,31 +175,41 @@ const Settings = () => {
                                                 <thead>
                                                     <tr className="border-b text-left">
                                                         <th className="pb-2 font-semibold">Name</th>
-                                                        <th className="pb-2 font-semibold">Email</th>
+                                                        <th className="pb-2 font-semibold">Enrolled Courses</th>
                                                         <th className="pb-2 font-semibold">Roll Number</th>
-                                                        <th className="pb-2 font-semibold">Department</th>
-                                                        <th className="pb-2 font-semibold">Level/XP</th>
+                                                        <th className="pb-2 font-semibold text-right">Level/XP</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {students.length > 0 ? (
+                                                    {students?.length > 0 ? (
                                                         students.map((student) => (
                                                             <tr key={student._id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                                                                <td className="py-3">{student.name}</td>
-                                                                <td className="py-3 text-muted-foreground">{student.email}</td>
-                                                                <td className="py-3">{student.rollNumber || "N/A"}</td>
-                                                                <td className="py-3">{student.department || "N/A"}</td>
-                                                                <td className="py-3">
-                                                                    <div className="flex items-center gap-1">
-                                                                        <GraduationCap className="h-3 w-3 text-primary" />
-                                                                        <span>Lvl {student.level} ({student.xp} XP)</span>
-                                                                    </div>
-                                                                </td>
+                                                              <td className="py-3 font-medium">{student.name}</td>
+                                                              <td className="py-3">
+                                                                  <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                                      {student.coursesList?.length > 0 ? (
+                                                                          student.coursesList.map((c: string, idx: number) => (
+                                                                              <Badge key={idx} variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none">
+                                                                                  {c}
+                                                                              </Badge>
+                                                                          ))
+                                                                      ) : (
+                                                                          <span className="text-muted-foreground text-xs italic">No courses</span>
+                                                                      )}
+                                                                  </div>
+                                                              </td>
+                                                              <td className="py-3">{student.rollNumber || "N/A"}</td>
+                                                              <td className="py-3 text-right">
+                                                                  <div className="flex items-center gap-1 justify-end">
+                                                                      <GraduationCap className="h-3 w-3 text-primary" />
+                                                                      <span>Lvl {student.level} ({student.xp} XP)</span>
+                                                                  </div>
+                                                              </td>
                                                             </tr>
                                                         ))
                                                     ) : (
                                                         <tr>
-                                                            <td colSpan={5} className="py-4 text-center text-muted-foreground">No students found.</td>
+                                                            <td colSpan={4} className="py-4 text-center text-muted-foreground">No students found.</td>
                                                         </tr>
                                                     )}
                                                 </tbody>
@@ -240,7 +260,14 @@ const Settings = () => {
                                         <Label htmlFor="dark-mode">Dark Mode</Label>
                                         <p className="text-sm text-muted-foreground">Toggle dark mode theme.</p>
                                     </div>
-                                    <Switch id="dark-mode" onCheckedChange={() => handleToggle("Dark mode")} />
+                                    <Switch 
+                                        id="dark-mode" 
+                                        checked={mounted && theme === "dark"}
+                                        onCheckedChange={(checked) => {
+                                            setTheme(checked ? "dark" : "light");
+                                            handleToggle("Dark mode");
+                                        }} 
+                                    />
                                 </div>
                             </CardContent>
                         </Card>

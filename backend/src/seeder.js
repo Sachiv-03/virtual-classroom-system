@@ -21,7 +21,7 @@ const seedData = async () => {
 
         // Create a teacher
         await User.create({
-            name: 'Dr. Sarah Teacher',
+            name: 'Professional Instructor',
             email: 'teacher@example.com',
             password: 'password123',
             role: 'teacher'

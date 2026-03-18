@@ -64,20 +64,27 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
-        {[...navItems, ...(user?.role === 'admin' ? adminItems : [])].map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-sidebar-accent",
-              collapsed && "justify-center"
-            )}
-            activeClassName="bg-sidebar-accent text-sidebar-primary"
-          >
-            <item.icon className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-          </NavLink>
-        ))}
+        {[...navItems, ...(user?.role === 'admin' ? adminItems : [])].map((item) => {
+          let label = item.label;
+          if (item.path === '/courses' && user?.role === 'admin') {
+            label = "Course Assignment";
+          }
+          
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors hover:bg-sidebar-accent",
+                collapsed && "justify-center"
+              )}
+              activeClassName="bg-sidebar-accent text-sidebar-primary"
+            >
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && <span>{label}</span>}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* User Profile */}

@@ -227,14 +227,66 @@ exports.getLeaderboard = asyncHandler(async (req, res, next) => {
         data: formattedLeaderboard
     });
 });
-// @desc    Get all students
+// @desc    Get all students (filtered by teacher if applicable)
 // @route   GET /api/dashboard/students
 // @access  Private/Teacher
 exports.getStudents = asyncHandler(async (req, res, next) => {
-    const students = await User.find({ role: 'student' }).select('name email department rollNumber level xp');
+    console.log(`Fetching students for user: ${req.user.id}, Role: ${req.user.role}`);
+    
+    let query = { role: 'student' };
+    
+    // We fetch all students but we will identify which ones are in the teacher's courses
+    const students = await User.find(query)
+        .select('name email department rollNumber level xp enrolledCourses')
+        .populate({
+            path: 'enrolledCourses',
+            select: 'title teacherId'
+        });
+    
+    console.log(`Found ${students.length} students in database`);
+    
+    // Process students to identify courses taught by THIS teacher
+    const formattedStudents = students.map(student => {
+        const studentObj = student.toObject();
+        
+        if (req.user.role === 'teacher') {
+            // Courses taught by this teacher that the student is enrolled in
+            studentObj.coursesList = (student.enrolledCourses || [])
+                .filter(course => course && course.teacherId && course.teacherId.toString() === req.user.id)
+                .map(course => course.title);
+            
+            // Add a flag to indicate if the student is actually "theirs"
+            studentObj.isMyStudent = studentObj.coursesList.length > 0;
+        } else {
+            // Admin sees all their courses
+            studentObj.coursesList = (student.enrolledCourses || []).map(course => course ? course.title : 'Unknown Course');
+            studentObj.isMyStudent = true;
+        }
+        return studentObj;
+    });
+    
+    // Sort by isMyStudent so their own students appear first
+    const sortedStudents = formattedStudents.sort((a, b) => {
+        const aVal = a.isMyStudent ? 1 : 0;
+        const bVal = b.isMyStudent ? 1 : 0;
+        return bVal - aVal;
+    });
+
     res.status(200).json({
         success: true,
-        count: students.length,
-        data: students
+        count: sortedStudents.length,
+        data: sortedStudents
+    });
+});
+
+// @desc    Get all teachers
+// @route   GET /api/dashboard/teachers
+// @access  Private/Admin
+exports.getTeachers = asyncHandler(async (req, res, next) => {
+    const teachers = await User.find({ role: 'teacher' }).select('name email department');
+    res.status(200).json({
+        success: true,
+        count: teachers.length,
+        data: teachers
     });
 });

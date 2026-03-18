@@ -10,5 +10,6 @@ router.get('/teacher', authorize('teacher', 'admin'), getTeacherDashboard);
 router.get('/student', authorize('student', 'admin'), getStudentDashboard);
 router.get('/leaderboard', getLeaderboard);
 router.get('/students', authorize('teacher', 'admin'), require('../controllers/dashboardController').getStudents);
+router.get('/teachers', authorize('admin'), require('../controllers/dashboardController').getTeachers);
 
 module.exports = router;

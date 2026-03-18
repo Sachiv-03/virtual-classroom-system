@@ -87,7 +87,10 @@ const Syllabus = () => {
                 ]);
                 setCourse(courseRes.data);
                 setEditCourseData({ title: courseRes.data.title || '', description: courseRes.data.description || '' });
-                setIsEnrolled(enrollRes.data?.isEnrolled || false);
+                
+                // Set enrollment status from response
+                const enrolled = enrollRes.data?.isEnrolled || false;
+                setIsEnrolled(enrolled);
             } catch (error) {
                 toast.error("Failed to load course details");
                 console.error(error);

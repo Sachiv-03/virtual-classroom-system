@@ -12,8 +12,7 @@ const topicSchema = new mongoose.Schema({
     title: { type: String, required: true },
     duration: { type: String },
     videoUrl: { type: String },
-    materials: [materialSchema],
-    completed: { type: Boolean, default: false }
+    materials: [materialSchema]
 });
 
 const unitSchema = new mongoose.Schema({

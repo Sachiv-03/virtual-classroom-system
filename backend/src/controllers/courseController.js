@@ -2,21 +2,37 @@ const Course = require('../models/Course');
 const asyncHandler = require('../utils/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
 const User = require('../models/User');
+const UserProgress = require('../models/UserProgress');
 
 // Get all courses
 exports.getAllCourses = asyncHandler(async (req, res, next) => {
-    const User = require('../models/User');
     const user = await User.findById(req.user.id);
+    const userProgress = await UserProgress.find({ user: req.user.id });
 
     const processCourses = (coursesArr) => {
         return coursesArr.map(course => {
             const courseObj = course.toObject ? course.toObject() : course;
             courseObj.isEnrolled = false;
+            courseObj.progress = 0;
 
             if (user.role === 'teacher' || user.role === 'admin') {
                 courseObj.isEnrolled = true;
+                // Teachers/Admins don't necessarily have "progress" in this context
             } else if (user.enrolledCourses && user.enrolledCourses.some(id => id.toString() === courseObj._id.toString())) {
                 courseObj.isEnrolled = true;
+                
+                // Calculate progress
+                const progressRecord = userProgress.find(p => p.course.toString() === courseObj._id.toString());
+                if (progressRecord && progressRecord.completedTopics.length > 0) {
+                    let totalTopics = 0;
+                    (courseObj.units || courseObj.syllabus || []).forEach(unit => {
+                        totalTopics += (unit.topics || []).length;
+                    });
+                    
+                    if (totalTopics > 0) {
+                        courseObj.progress = Math.round((progressRecord.completedTopics.length / totalTopics) * 100);
+                    }
+                }
             }
             return courseObj;
         });
@@ -85,7 +101,22 @@ exports.getCourseById = asyncHandler(async (req, res, next) => {
     if (!course) {
         return next(new ErrorResponse(`Course not found with id of ${req.params.id}`, 404));
     }
-    res.json(course);
+
+    const courseObj = course.toObject();
+    
+    // If student, attach completion status to topics
+    if (req.user && req.user.role === 'student') {
+        const progress = await UserProgress.findOne({ user: req.user.id, course: req.params.id });
+        if (progress) {
+            (courseObj.units || courseObj.syllabus || []).forEach(unit => {
+                (unit.topics || []).forEach(topic => {
+                    topic.completed = progress.completedTopics.includes(topic.id);
+                });
+            });
+        }
+    }
+
+    res.json(courseObj);
 });
 
 // Check if user is enrolled
@@ -410,4 +441,55 @@ exports.addSchedule = asyncHandler(async (req, res, next) => {
     }
 
     res.status(200).json({ success: true, data: course });
+});
+
+// @desc    Get all students enrolled in a specific course
+// @route   GET /api/courses/:id/students
+// @access  Private/Teacher/Admin
+exports.getEnrolledStudents = asyncHandler(async (req, res, next) => {
+    const course = await Course.findById(req.params.id);
+    if (!course) return next(new ErrorResponse('Course not found', 404));
+
+    // Permission check: only admin or the teacher of this course can see the student list
+    if (req.user.role !== 'admin' && course.teacherId && course.teacherId.toString() !== req.user.id) {
+        return next(new ErrorResponse('Not authorized to view student list for this course', 403));
+    }
+
+    const students = await User.find({
+        role: 'student',
+        enrolledCourses: req.params.id
+    }).select('name email profilePhoto department rollNumber xp level');
+
+    res.status(200).json({
+        success: true,
+        count: students.length,
+        data: students
+    });
+});
+
+// @desc    Mark a topic as completed
+// @route   POST /api/courses/:id/topics/:topicId/complete
+// @access  Private (Student)
+exports.markTopicCompleted = asyncHandler(async (req, res, next) => {
+    const { id: courseId, topicId } = req.params;
+
+    let progress = await UserProgress.findOne({ user: req.user.id, course: courseId });
+
+    if (!progress) {
+        progress = await UserProgress.create({
+            user: req.user.id,
+            course: courseId,
+            completedTopics: [topicId]
+        });
+    } else {
+        if (!progress.completedTopics.includes(topicId)) {
+            progress.completedTopics.push(topicId);
+            await progress.save();
+        }
+    }
+
+    res.status(200).json({
+        success: true,
+        data: progress
+    });
 });

@@ -52,3 +52,13 @@ export const enrollInCourse = async (courseId: string) => {
     const response = await api.post(`/courses/${courseId}/enroll`);
     return response.data;
 };
+
+export const getEnrolledStudents = async (courseId: string) => {
+    const response = await api.get(`/courses/${courseId}/students`);
+    return response.data;
+};
+
+export const markTopicCompleted = async (courseId: string, topicId: string) => {
+    const response = await api.post(`/courses/${courseId}/topics/${topicId}/complete`);
+    return response.data;
+};

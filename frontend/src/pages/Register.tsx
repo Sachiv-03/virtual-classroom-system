@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ const Register = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const handleGoogleSuccess = async (credentialResponse: any) => {
+    const handleGoogleSuccess = useCallback(async (credentialResponse: any) => {
         setLoading(true);
         try {
             const { data } = await api.post("/auth/google", {
@@ -43,11 +43,11 @@ const Register = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [login, navigate]);
 
-    const handleGoogleError = () => {
+    const handleGoogleError = useCallback(() => {
         toast.error("Google registration failed");
-    };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

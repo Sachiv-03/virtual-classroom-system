@@ -284,8 +284,75 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- MESH WEBRTC MEETING EVENTS ---
+    socket.on('join_meeting', (roomId, userDetails) => {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} (${userDetails.name}) joined WebRTC meeting room ${roomId}`);
+        
+        // Find existing users in room
+        const clientsInRoom = Array.from(io.sockets.adapter.rooms.get(roomId) || [])
+            .filter(id => id !== socket.id);
+            
+        // Tell the new user who is already there
+        socket.emit("all_users", clientsInRoom);
+    });
+
+    socket.on('sending_signal', payload => {
+        // payload: { signal, callerID, userToSignal, callerName }
+        io.to(payload.userToSignal).emit('user_joined', {
+            signal: payload.signal,
+            callerID: payload.callerID,
+            callerName: payload.callerName
+        });
+    });
+
+    socket.on('returning_signal', payload => {
+        // payload: { signal, callerID, callerName }
+        io.to(payload.callerID).emit('receiving_returned_signal', {
+            signal: payload.signal,
+            id: socket.id,
+            returnedName: payload.callerName
+        });
+    });
+
+    socket.on('leave_meeting', (roomId) => {
+        socket.leave(roomId);
+        socket.to(roomId).emit('user_left', socket.id);
+    });
+
+    // --- MEETING CONTROLS & STATE SYNC ---
+    socket.on('toggle_audio', ({ roomId, isMuted }) => {
+        socket.to(roomId).emit('peer_audio_toggled', { peerId: socket.id, isMuted });
+    });
+
+    socket.on('toggle_video', ({ roomId, isVideoOff }) => {
+        socket.to(roomId).emit('peer_video_toggled', { peerId: socket.id, isVideoOff });
+    });
+
+    socket.on('toggle_hand', ({ roomId, isRaised }) => {
+        socket.to(roomId).emit('peer_hand_toggled', { peerId: socket.id, isRaised });
+    });
+
+    socket.on('host_mute_user', ({ roomId, targetId }) => {
+        if (targetId === 'all') {
+            socket.to(roomId).emit('host_muted_you');
+        } else {
+            io.to(targetId).emit('host_muted_you');
+        }
+    });
+
+    socket.on('host_kick_user', ({ roomId, targetId }) => {
+        io.to(targetId).emit('host_kicked_you');
+        // Let others know this socket was kicked, or rely on normal leave_meeting
+        io.sockets.sockets.get(targetId)?.leave(roomId);
+        socket.to(roomId).emit('user_left', targetId);
+    });
+    // --- END MESH WEBRTC EVENTS ---
+
     socket.on('disconnect', () => {
         console.log(`Socket disconnected: ${socket.id}`);
+        // Also broadcast meeting leave to all rooms this socket is in
+        // but socket event disconnect already left rooms, so we emit based on userSockets if needed
         for (let [userId, sId] of userSockets.entries()) {
             if (sId === socket.id) {
                 userSockets.delete(userId);

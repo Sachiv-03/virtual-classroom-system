@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +66,7 @@ const Login = () => {
         }
     };
 
-    const handleGoogleSuccess = async (credentialResponse: any) => {
+    const handleGoogleSuccess = useCallback(async (credentialResponse: any) => {
         setLoading(true);
         try {
             const { data } = await api.post("/auth/google", {
@@ -82,11 +82,11 @@ const Login = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [login, navigate]);
 
-    const handleGoogleError = () => {
+    const handleGoogleError = useCallback(() => {
         toast.error("Google login failed. Please try again.");
-    };
+    }, []);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">

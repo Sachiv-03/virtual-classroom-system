@@ -150,10 +150,7 @@ const Courses = () => {
         toast.success(`Enrolled in "${course.title}" successfully!`);
       }
       
-      // Navigate to the course immediately
-      navigate(`/courses/${course._id}`);
-      
-      // Refresh courses to update internal state (optional but good for consistency if they go back)
+      // Refresh courses to update internal state
       const response = await api.get('/courses');
       const rawData = Array.isArray(response.data) ? response.data : (response.data.data || []);
       const data = rawData.map((c: any, index: number) => ({
@@ -374,9 +371,9 @@ const Courses = () => {
                           }}
                         >
                           {enrollingId === course._id ? (
-                            "Starting..."
+                            "Registering..."
                           ) : (
-                            !course.isEnrolled ? "Start Course" : "Continue Learning"
+                            !course.isEnrolled ? "Register" : "Continue Learning"
                           )}
                           <ArrowRight className="h-4 w-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
                         </Button>

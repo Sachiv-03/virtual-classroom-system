@@ -15,6 +15,7 @@ router.get('/', protect, (req, res, next) => {
 }, advancedResults(Course), courseController.getAllCourses);
 router.get('/:id', protect, courseController.getCourseById);
 router.get('/:id/enrollment-status', protect, courseController.checkEnrollmentStatus);
+router.get('/:id/students', protect, courseController.getEnrolledStudents);
 router.post('/', protect, authorize('teacher'), validateCourse, courseController.createCourse);
 router.put('/:id', protect, authorize('teacher', 'admin'), validateCourseUpdate, courseController.updateCourse);
 router.put('/:id/attach-syllabus', protect, authorize('admin', 'teacher'), courseController.attachSyllabus);
@@ -30,5 +31,8 @@ router.delete('/:id/units/:unitId/topics/:topicId', protect, authorize('admin', 
 
 // Self-enrollment route for students (free courses)
 router.post('/:id/enroll', protect, courseController.enrollInCourse);
+
+// Student Progress Routes
+router.post('/:id/topics/:topicId/complete', protect, courseController.markTopicCompleted);
 
 module.exports = router;

@@ -14,3 +14,4 @@ export const getLeaderboard = async () => {
     const response = await api.get('/dashboard/leaderboard');
     return response.data;
 };
+

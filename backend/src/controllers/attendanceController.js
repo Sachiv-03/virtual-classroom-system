@@ -70,7 +70,10 @@ exports.getAnalytics = asyncHandler(async (req, res, next) => {
     const { courseId } = req.params;
     const studentId = req.user.id;
 
-    const totalLectures = 30; // Mock value
+    // Dynamically calculate total lectures by counting distinct attendance dates for this course
+    const distinctDates = await Attendance.distinct('date', { course: courseId });
+    const totalLectures = Math.max(distinctDates.length, 1);
+    
     const attendedLectures = await Attendance.countDocuments({
         student: studentId,
         course: courseId,
@@ -227,9 +230,9 @@ exports.leaveClass = asyncHandler(async (req, res, next) => {
         const diffMs = attendance.checkoutTime - attendance.checkInTime;
         attendance.duration = Math.floor(diffMs / 60000); // Minutes
         
-        // Mark Absent if leaving before minimum required duration (e.g. 30 mins)
-        // Here we just mark Absent if duration < 30 minutes, since they left "inbetween"
-        if(attendance.duration < 30) {
+        // Mark Absent if leaving before minimum required duration (e.g. 15 mins)
+        // This prevents students from just joining and leaving instantly to mark attendance
+        if(attendance.duration < 15) {
             attendance.status = 'Absent';
         }
         await attendance.save();

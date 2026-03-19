@@ -2,5 +2,8 @@
   "dependencies": {
     "google-auth-library": "^10.6.1",
     "googleapis": "^171.4.0"
+  },
+  "devDependencies": {
+    "vite-plugin-node-polyfills": "^0.25.0"
   }
 }

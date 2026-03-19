@@ -8,15 +8,25 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { PlayCircle, Clock, CheckCircle2, FileText, ChevronRight, User as UserIcon, Calendar, Video, Edit2, Play, BookOpen, ChevronLeft, CheckCircle, BarChart2 } from 'lucide-react';
+import { PlayCircle, Clock, CheckCircle2, FileText, ChevronRight, User as UserIcon, Calendar, Video, Edit2, Play, BookOpen, ChevronLeft, CheckCircle, BarChart2, Users } from 'lucide-react';
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { paymentService } from "@/services/paymentService";
-import { getCourseById, updateCourse, addClassSchedule } from '@/services/courseService';
+import { getCourseById, updateCourse, addClassSchedule, getEnrolledStudents, markTopicCompleted } from '@/services/courseService';
 import { CourseBuilder } from "@/components/classroom/CourseBuilder";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -77,32 +87,54 @@ const Syllabus = () => {
     const [editCourseData, setEditCourseData] = useState({ title: '', description: '' });
     const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
     const [scheduleData, setScheduleData] = useState({ day: 'Monday', startTime: '10:00', endTime: '11:00' });
+    const [students, setStudents] = useState<any[]>([]);
+    const [fetchingStudents, setFetchingStudents] = useState(false);
+    const [completingTopic, setCompletingTopic] = useState(false);
+    const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+
+    const fetchCourseData = async () => {
+        try {
+            const [courseRes, enrollRes] = await Promise.all([
+                api.get(`/courses/${courseId}`),
+                user && user.role !== 'teacher' ? api.get(`/courses/${courseId}/enrollment-status`) : Promise.resolve({ data: { isEnrolled: user?.role === 'teacher' || user?.role === 'admin' } })
+            ]);
+            setCourse(courseRes.data);
+            setEditCourseData({ title: courseRes.data.title || '', description: courseRes.data.description || '' });
+            
+            // Set enrollment status from response
+            const enrolled = enrollRes.data?.isEnrolled || false;
+            setIsEnrolled(enrolled);
+        } catch (error) {
+            toast.error("Failed to load course details");
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchCourseData = async () => {
+
+        const fetchStudents = async () => {
+            if (!isTeacher || !courseId) return;
+            setFetchingStudents(true);
             try {
-                const [courseRes, enrollRes] = await Promise.all([
-                    api.get(`/courses/${courseId}`),
-                    user && user.role !== 'teacher' ? api.get(`/courses/${courseId}/enrollment-status`) : Promise.resolve({ data: { isEnrolled: user?.role === 'teacher' || user?.role === 'admin' } })
-                ]);
-                setCourse(courseRes.data);
-                setEditCourseData({ title: courseRes.data.title || '', description: courseRes.data.description || '' });
-                
-                // Set enrollment status from response
-                const enrolled = enrollRes.data?.isEnrolled || false;
-                setIsEnrolled(enrolled);
+                const res = await getEnrolledStudents(courseId);
+                // getEnrolledStudents returns the array directly due to the api.ts interceptor unwrapping response.data.data
+                setStudents(Array.isArray(res) ? res : (res.data || []));
             } catch (error) {
-                toast.error("Failed to load course details");
-                console.error(error);
+                console.error("Failed to fetch students:", error);
             } finally {
-                setLoading(false);
+                setFetchingStudents(false);
             }
         };
 
         if (courseId) {
             fetchCourseData();
+            if (isTeacher) {
+                fetchStudents();
+            }
         }
-    }, [courseId, user]);
+    }, [courseId, user, isTeacher]);
 
     const handleTopicClick = (topic: Topic) => {
         if (!isEnrolled) {
@@ -420,19 +452,100 @@ const Syllabus = () => {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Main Content - Syllabus */}
+                        {/* Main Content - Syllabus & Students */}
                         <div className="lg:col-span-2 space-y-6">
-                            <h2 className="text-2xl font-bold flex items-center gap-2">
-                                <BookOpen className="h-6 w-6 text-primary" />
-                                Course Syllabus
-                            </h2>
+                            <Tabs defaultValue="syllabus" className="w-full">
+                                <div className="flex items-center justify-between mb-4">
+                                    <TabsList>
+                                        <TabsTrigger value="syllabus" className="gap-2">
+                                            <BookOpen className="h-4 w-4" /> Syllabus
+                                        </TabsTrigger>
+                                        {isTeacher && (
+                                            <TabsTrigger value="students" className="gap-2">
+                                                <Users className="h-4 w-4" /> Students
+                                            </TabsTrigger>
+                                        )}
+                                    </TabsList>
+                                </div>
 
-                            <CourseBuilder 
-                                courseId={course._id} 
-                                initialUnits={course.units || course.syllabus || []} 
-                                onUpdate={(newUnits) => setCourse({...course, units: newUnits as any})} 
-                                isTeacher={user?.role === 'teacher' || user?.role === 'admin'} 
-                            />
+                                <TabsContent value="syllabus" className="mt-0 space-y-6">
+                                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                                        <BookOpen className="h-6 w-6 text-primary" />
+                                        Course Syllabus
+                                    </h2>
+
+                                    <CourseBuilder 
+                                        courseId={course._id} 
+                                        initialUnits={course.units || course.syllabus || []} 
+                                        onUpdate={(newUnits) => setCourse({...course, units: newUnits as any})} 
+                                        isTeacher={isTeacher} 
+                                    />
+                                </TabsContent>
+
+                                {isTeacher && (
+                                    <TabsContent value="students" className="mt-0 space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="text-2xl font-bold flex items-center gap-2">
+                                                <Users className="h-6 w-6 text-primary" />
+                                                Enrolled Students
+                                            </h2>
+                                            <Badge variant="outline">{students.length} Students</Badge>
+                                        </div>
+
+                                        <Card>
+                                            <CardContent className="p-0">
+                                                {fetchingStudents ? (
+                                                    <div className="p-8 text-center">
+                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                                        <p className="mt-2 text-muted-foreground">Loading student list...</p>
+                                                    </div>
+                                                ) : students.length > 0 ? (
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead>Student</TableHead>
+                                                                <TableHead>Roll Number</TableHead>
+                                                                <TableHead>Department</TableHead>
+                                                                <TableHead className="text-right">Level/XP</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {students.map((student) => (
+                                                                <TableRow key={student._id}>
+                                                                    <TableCell>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Avatar className="h-8 w-8">
+                                                                                <AvatarImage src={student.profilePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}`} />
+                                                                                <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                                                                            </Avatar>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="font-medium">{student.name}</span>
+                                                                                <span className="text-xs text-muted-foreground">{student.email}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </TableCell>
+                                                                    <TableCell>{student.rollNumber || "N/A"}</TableCell>
+                                                                    <TableCell>{student.department || "General"}</TableCell>
+                                                                    <TableCell className="text-right">
+                                                                        <div className="flex flex-col items-end">
+                                                                            <span className="text-xs font-bold text-primary">Lvl {student.level || 1}</span>
+                                                                            <span className="text-[10px] text-muted-foreground">{student.xp || 0} XP</span>
+                                                                        </div>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                ) : (
+                                                    <div className="p-12 text-center text-muted-foreground">
+                                                        No students enrolled in this course yet.
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    </TabsContent>
+                                )}
+                            </Tabs>
                         </div>
 
                         {/* Sidebar Stats */}
@@ -519,10 +632,25 @@ const Syllabus = () => {
                     </div>
                     <div className="p-4 border-t flex justify-between items-center bg-background">
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Close</Button>
-                        <Button onClick={() => {
-                            toast.success("Topic marked as completed.");
-                            setIsDialogOpen(false);
-                        }}>Mark as Complete</Button>
+                        <Button 
+                            disabled={completingTopic || selectedTopic?.isCompleted}
+                            onClick={async () => {
+                                if (!courseId || !selectedTopic) return;
+                                setCompletingTopic(true);
+                                try {
+                                    await markTopicCompleted(courseId, selectedTopic._id || (selectedTopic as any).id);
+                                    toast.success("Topic marked as completed.");
+                                    setIsDialogOpen(false);
+                                    fetchCourseData(); // Refresh to show checkmark
+                                } catch (error) {
+                                    toast.error("Failed to mark topic as completed");
+                                } finally {
+                                    setCompletingTopic(false);
+                                }
+                            }}
+                        >
+                            {completingTopic ? "Updating..." : selectedTopic?.isCompleted ? "Already Completed" : "Mark as Complete"}
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>

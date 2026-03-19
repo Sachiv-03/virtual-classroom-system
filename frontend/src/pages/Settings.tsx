@@ -13,6 +13,7 @@ import { User, Bell, Palette, Shield, LogOut, Users, BookOpen, GraduationCap } f
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useTheme } from "next-themes";
+import { useSocket } from "@/context/SocketContext";
 
 const Settings = () => {
     const { logout, user, login, updateUser } = useAuth();
@@ -20,6 +21,7 @@ const Settings = () => {
     const [mounted, setMounted] = useState(false);
     const navigate = useNavigate();
     const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+    const { socket } = useSocket();
 
     useEffect(() => {
         setMounted(true);
@@ -31,28 +33,7 @@ const Settings = () => {
         department: (user as any)?.department || "",
         rollNumber: (user as any)?.rollNumber || ""
     });
-    const [students, setStudents] = useState<any[]>([]);
-    const [loadingStudents, setLoadingStudents] = useState(false);
 
-    useEffect(() => {
-        if (isTeacher) {
-            fetchStudents();
-        }
-    }, [isTeacher]);
-
-    const fetchStudents = async () => {
-        setLoadingStudents(true);
-        try {
-            const response = await api.get('/dashboard/students');
-            setStudents(response.data.data || []);
-        } catch (error) {
-            console.error("Error fetching students:", error);
-            toast.error("Failed to load student list");
-            setStudents([]); // Reset to empty array on error
-        } finally {
-            setLoadingStudents(false);
-        }
-    };
 
     const handleUpdateProfile = async () => {
         try {
@@ -155,70 +136,7 @@ const Settings = () => {
                             </CardContent>
                         </Card>
 
-                        {isTeacher && (
-                            <Card className="md:col-span-2">
-                                <CardHeader>
-                                    <div className="flex items-center gap-2">
-                                        <Users className="h-5 w-5 text-primary" />
-                                        <CardTitle>Student List</CardTitle>
-                                    </div>
-                                    <CardDescription>View all students registered in the system.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {loadingStudents ? (
-                                        <div className="flex justify-center py-4">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                                        </div>
-                                    ) : (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-sm">
-                                                <thead>
-                                                    <tr className="border-b text-left">
-                                                        <th className="pb-2 font-semibold">Name</th>
-                                                        <th className="pb-2 font-semibold">Enrolled Courses</th>
-                                                        <th className="pb-2 font-semibold">Roll Number</th>
-                                                        <th className="pb-2 font-semibold text-right">Level/XP</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {students?.length > 0 ? (
-                                                        students.map((student) => (
-                                                            <tr key={student._id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                                                              <td className="py-3 font-medium">{student.name}</td>
-                                                              <td className="py-3">
-                                                                  <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                                                      {student.coursesList?.length > 0 ? (
-                                                                          student.coursesList.map((c: string, idx: number) => (
-                                                                              <Badge key={idx} variant="secondary" className="text-[10px] py-0 px-2 bg-primary/10 text-primary border-none">
-                                                                                  {c}
-                                                                              </Badge>
-                                                                          ))
-                                                                      ) : (
-                                                                          <span className="text-muted-foreground text-xs italic">No courses</span>
-                                                                      )}
-                                                                  </div>
-                                                              </td>
-                                                              <td className="py-3">{student.rollNumber || "N/A"}</td>
-                                                              <td className="py-3 text-right">
-                                                                  <div className="flex items-center gap-1 justify-end">
-                                                                      <GraduationCap className="h-3 w-3 text-primary" />
-                                                                      <span>Lvl {student.level} ({student.xp} XP)</span>
-                                                                  </div>
-                                                              </td>
-                                                            </tr>
-                                                        ))
-                                                    ) : (
-                                                        <tr>
-                                                            <td colSpan={4} className="py-4 text-center text-muted-foreground">No students found.</td>
-                                                        </tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
+
 
                         <Card>
                             <CardHeader>
